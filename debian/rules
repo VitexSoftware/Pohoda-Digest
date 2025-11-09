@@ -10,10 +10,20 @@ override_dh_auto_install:
 	cp -r src/* debian/pohoda-digest/usr/share/pohoda-digest/
 	cp composer.json debian/pohoda-digest/usr/share/pohoda-digest/
 	
-	# Install CLI tool
+	# Install bin directory with CLI tools
+	mkdir -p debian/pohoda-digest/usr/share/pohoda-digest/bin
+	cp bin/pohoda-digest.php debian/pohoda-digest/usr/share/pohoda-digest/bin/
+	chmod +x debian/pohoda-digest/usr/share/pohoda-digest/bin/pohoda-digest.php
+	
+	# Install CLI tools to /usr/bin
 	mkdir -p debian/pohoda-digest/usr/bin
 	cp bin/pohoda-digest debian/pohoda-digest/usr/bin/
-	chmod +x debian/pohoda-digest/usr/bin/pohoda-digest
+	cp bin/pohoda-alltimedigest debian/pohoda-digest/usr/bin/
+	cp bin/pohoda-daydigest debian/pohoda-digest/usr/bin/
+	cp bin/pohoda-monthdigest debian/pohoda-digest/usr/bin/
+	cp bin/pohoda-weekdigest debian/pohoda-digest/usr/bin/
+	cp bin/pohoda-yeardigest debian/pohoda-digest/usr/bin/
+	chmod +x debian/pohoda-digest/usr/bin/pohoda-*
 	
 	# Install configuration
 	mkdir -p debian/pohoda-digest/etc/pohoda-digest
@@ -22,7 +32,17 @@ override_dh_auto_install:
 	# Install cron configuration
 	mkdir -p debian/pohoda-digest/etc/cron.d
 	echo "# Pohoda-Digest daily report" > debian/pohoda-digest/etc/cron.d/pohoda-digest
-	echo "0 6 * * * root /usr/bin/pohoda-digest --quiet" >> debian/pohoda-digest/etc/cron.d/pohoda-digest
+	echo "0 6 * * * root /usr/bin/pohoda-daydigest --quiet" >> debian/pohoda-digest/etc/cron.d/pohoda-digest
+	
+	# Install MultiFlexi configurations
+	mkdir -p debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi
+	cp multiflexi/*.multiflexi.app.json debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/
+	# Update version in MultiFlexi configs
+	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/daily_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/daily_digest.multiflexi.app.json
+	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/weekly_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/weekly_digest.multiflexi.app.json
+	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/monthly_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/monthly_digest.multiflexi.app.json
+	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/yearly_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/yearly_digest.multiflexi.app.json
+	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/alltime_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/alltime_digest.multiflexi.app.json
 
 override_dh_auto_test:
 	# Skip tests for now - can be enabled when test suite is expanded

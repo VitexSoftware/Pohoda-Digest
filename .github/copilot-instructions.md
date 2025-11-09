@@ -18,7 +18,7 @@ This is a **complete application** that demonstrates the full ecosystem:
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Pohoda/mServer │◄──┤ PohodaDataProvider│◄──┤  DigestModules  │
+│  Pohoda/mServer │◄──┤ PohodaDataProvider│ ◄──┤  DigestModules  │
 │                 │    │                  │    │                 │
 │ • XML/SQL API   │    │ • Data Adapter   │    │ • Analytics     │
 │ • Business Data │    │ • Connection Mgmt│    │ • JSON Output   │
@@ -26,7 +26,7 @@ This is a **complete application** that demonstrates the full ecosystem:
                                                         │
                                                         ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│    HTML Report  │◄──┤ DigestRenderer   │◄──┤  Pohoda-Digest  │
+│    HTML Report  │ ◄──┤ DigestRenderer   │ ◄──┤  Pohoda-Digest  │
 │                 │    │                  │    │                 │
 │ • Bootstrap UI  │    │ • Theme Engine   │    │ • CLI Interface │
 │ • Email Format  │    │ • HTML Generator │    │ • Cron Jobs     │
@@ -40,13 +40,33 @@ This is a **complete application** that demonstrates the full ecosystem:
 - **CLI Interface**: Full-featured command-line tool
 - **Multiple Themes**: Bootstrap for web, Email for client compatibility
 
-## Development Best Practices
-- Use strict types: `declare(strict_types=1);`
-- Follow PSR-4 autoloading standards
-- Implement comprehensive error handling
-- Use environment configuration (.env files)
-- Provide both CLI and programmatic interfaces
-- Include working examples and tests
+## 📋 Development Standards
+
+### Core Coding Guidelines
+- **PHP 8.1+**: Use modern PHP features and strict types: `declare(strict_types=1);`
+- **PSR-12**: Follow PHP-FIG coding standards for consistency
+- **Type Safety**: Include type hints for all parameters and return types
+- **Documentation**: PHPDoc blocks for all public methods and classes
+- **Testing**: PHPUnit tests for all new functionality
+- **Internationalization**: Use `_()` functions for translatable strings
+
+### Development Best Practices
+- **Code Comments**: Write in English using complete sentences and proper grammar
+- **Variable Names**: Use meaningful names that describe their purpose
+- **Constants**: Avoid magic numbers/strings; define constants instead
+- **Exception Handling**: Always provide meaningful error messages
+- **Commit Messages**: Use imperative mood and keep them concise
+- **Security**: Ensure code is secure and doesn't expose sensitive information
+- **Compatibility**: Maintain compatibility with latest PHP and library versions
+- **Environment Configuration**: Use .env files for all configuration
+- **CLI Interface**: Provide comprehensive command-line options with help
+
+### Code Quality Requirements
+- **Syntax Validation**: After every PHP file edit, run `php -l filename.php` for syntax checking
+- **Error Handling**: Implement comprehensive try-catch blocks with meaningful error messages
+- **JSON Output**: Support `--format json` option for all CLI commands and operations
+- **Testing Requirements**: PHPUnit integration with comprehensive test coverage
+- **Performance**: Optimize for production use with large datasets
 
 ## Key Components
 1. **Data Provider** (`src/DataProvider/`):
@@ -152,3 +172,29 @@ This project demonstrates how to:
 - Implement additional data providers for other systems
 - Create custom themes for specific requirements
 - Build web interface using the same backend
+
+## 🌐 MultiFlexi Integration
+
+### Schema Compliance
+All MultiFlexi files must conform to official schemas:
+
+- **Application Config** (`multiflexi/*.app.json`): 
+  https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json
+
+- **Report Output** (generated reports):
+  https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.report.schema.json
+
+### Application Definition Pattern
+```json
+{
+    "name": "Pohoda-Digest",
+    "description": "Analytics and reporting for Pohoda",
+    "version": "1.0.0",
+    "vendor": "vitexsoftware",
+    "homepage": "https://github.com/VitexSoftware/Pohoda-Digest",
+    "requirements": {
+        "php": ">=8.4",
+        "pohoda-connector": "dev-main"
+    }
+}
+```

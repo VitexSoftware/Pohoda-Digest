@@ -1,0 +1,11 @@
+#!/bin/sh
+# postinst script for multiflexi-pohoda-digest
+set -e
+
+. /usr/share/debconf/confmodule
+
+# Iterate over all json files in usr/lib/pohoda-digest/multiflexi
+for file in `ls /usr/lib/pohoda-digest/multiflexi/*.json`
+do
+	multiflexi-json2app $file
+done

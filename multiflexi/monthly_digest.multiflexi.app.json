@@ -1,0 +1,118 @@
+{
+    "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+    "schemaVersion": "3.0.0",
+    "uuid": "d3f6e8f0-3497-6b57-cfe8-48d69e7326h5",
+    "name": {
+        "en": "Pohoda Monthly Digest",
+        "cs": "Pohoda Měsíční Digest"
+    },
+    "description": {
+        "en": "Monthly analytics digest for Pohoda/Money S3 accounting system",
+        "cs": "Měsíční analytický digest pro účetní systém Pohoda/Money S3"
+    },
+    "version": "1.0.0",
+    "tags": [
+        "Pohoda",
+        "Money S3",
+        "Digest",
+        "Analytics",
+        "Monthly",
+        "Accounting"
+    ],
+    "homepage": "https://github.com/VitexSoftware/Pohoda-Digest/",
+    "repository": "https://github.com/VitexSoftware/Pohoda-Digest",
+    "image": "",
+    "executable": "/usr/bin/pohoda-monthdigest",
+    "environment": {
+        "POHODA_URL": {
+            "type": "url",
+            "description": {
+                "en": "Pohoda mServer URL",
+                "cs": "URL adresa Pohoda mServer"
+            },
+            "defval": "https://localhost:8080",
+            "required": true,
+            "category": "API"
+        },
+        "POHODA_ICO": {
+            "type": "string",
+            "description": {
+                "en": "Company Identification Number (IČO)",
+                "cs": "Identifikační číslo organizace (IČO)"
+            },
+            "defval": "12345678",
+            "required": true,
+            "category": "API"
+        },
+        "POHODA_USERNAME": {
+            "type": "string",
+            "description": {
+                "en": "Pohoda API Username",
+                "cs": "Přihlašovací jméno do Pohoda API"
+            },
+            "defval": "api",
+            "required": true,
+            "category": "API"
+        },
+        "POHODA_PASSWORD": {
+            "type": "password",
+            "description": {
+                "en": "Pohoda API Password",
+                "cs": "Heslo do Pohoda API"
+            },
+            "defval": "",
+            "required": true,
+            "category": "API"
+        },
+        "THEME": {
+            "type": "string",
+            "description": {
+                "en": "Report Theme (bootstrap/email)",
+                "cs": "Téma reportu (bootstrap/email)"
+            },
+            "defval": "bootstrap",
+            "required": false,
+            "category": "Other"
+        },
+        "EMAIL_ADDRESS": {
+            "type": "email",
+            "description": {
+                "en": "Send Digest to Email Address",
+                "cs": "Poslat digest na emailovou adresu"
+            },
+            "defval": "",
+            "required": false,
+            "category": "Other"
+        },
+        "OUTPUT_FILE": {
+            "type": "file-path",
+            "description": {
+                "en": "Save Output to File",
+                "cs": "Uložit výstup do souboru"
+            },
+            "defval": "monthly_digest.html",
+            "required": false,
+            "category": "Other"
+        },
+        "OUTPUT_FORMAT": {
+            "type": "string",
+            "description": {
+                "en": "Output Format (html/json)",
+                "cs": "Formát výstupu (html/json)"
+            },
+            "defval": "html",
+            "required": false,
+            "category": "Other"
+        },
+        "MODULES": {
+            "type": "string",
+            "description": {
+                "en": "Comma-separated list of modules",
+                "cs": "Seznam modulů oddělený čárkami"
+            },
+            "defval": "outcoming_invoices,debtors",
+            "required": false,
+            "category": "Behavior"
+        }
+    }
+}

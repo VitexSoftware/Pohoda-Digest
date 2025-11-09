@@ -1,0 +1,2 @@
+#!/bin/bash
+php -f /usr/share/pohoda-digest/bin/pohoda-digest.php -- --start="$(date '+%Y-%m-%d')" --end="$(date '+%Y-%m-%d')"

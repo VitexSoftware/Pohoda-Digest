@@ -2,7 +2,7 @@ Source: pohoda-digest
 Section: web
 Priority: optional
 Maintainer: Vítězslav Dvořák <info@vitexsoftware.cz>
-Build-Depends: debhelper-compat (= 13)
+Build-Depends: debhelper-compat (= 13), jq, moreutils
 Standards-Version: 4.1.2
 Homepage: https://github.com/VitexSoftware/Pohoda-Digest
 
@@ -15,6 +15,7 @@ Depends: ${misc:Depends},
          php-vitexsoftware-pohoda-connector (>= 2.0),
          composer,
          cron
+Suggests: multiflexi
 Description: Analytics and reporting tool for Money S3/Pohoda accounting
  Pohoda-Digest is a comprehensive analytics and reporting tool for Money S3
  and Pohoda accounting systems. It generates detailed financial reports,
@@ -28,4 +29,16 @@ Description: Analytics and reporting tool for Money S3/Pohoda accounting
   * Cron-ready for scheduled reporting
   * Outcoming invoices analysis
   * Customer debt monitoring
+
+Package: multiflexi-pohoda-digest
+Depends: multiflexi, pohoda-digest
+Architecture: all
+Section: web
+Priority: optional
+Description: Add Pohoda-Digest to MultiFlexi
+ Install or update MultiFlexi app JSON definitions for Pohoda-Digest
+ analytics tools into MultiFlexi environment.
+ .
+ This package provides MultiFlexi integration for all Pohoda-Digest 
+ time periods including daily, weekly, monthly, yearly and all-time digests.
   * Customizable report generation

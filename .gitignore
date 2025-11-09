@@ -42,3 +42,4 @@ phpunit.xml
 *.json
 output/
 reports/
+/nbproject/private/

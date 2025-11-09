@@ -1,0 +1,6 @@
+#!/bin/bash
+# Calculate first and last day of current year
+year_start=$(date '+%Y-01-01')
+year_end=$(date '+%Y-12-31')
+
+php -f /usr/share/pohoda-digest/bin/pohoda-digest.php -- --start="$year_start" --end="$year_end"

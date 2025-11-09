@@ -50,6 +50,58 @@ php bin/pohoda-digest.php --format=json
 php bin/pohoda-digest.php --email=admin@company.com
 ```
 
+### Launcher Scripts
+
+For convenience, there are predefined launcher scripts for common time periods:
+
+| Script | Description | Time Period |
+|--------|-------------|-------------|
+| `pohoda-daydigest` | Daily digest | Current day |
+| `pohoda-weekdigest` | Weekly digest | Current week (Monday-Sunday) |
+| `pohoda-monthdigest` | Monthly digest | Current month |
+| `pohoda-yeardigest` | Yearly digest | Current year |
+| `pohoda-alltimedigest` | All-time digest | From 2000-01-01 to today |
+
+```bash
+# Example usage after Debian package installation
+pohoda-daydigest
+pohoda-weekdigest
+pohoda-monthdigest
+```
+
+These scripts are installed to `/usr/bin/` during Debian packaging and can be used directly from the command line or in cron jobs.
+
+## MultiFlexi Integration
+
+Pohoda-Digest provides full MultiFlexi integration through the `multiflexi-pohoda-digest` package:
+
+```bash
+# Install MultiFlexi integration
+sudo apt install multiflexi-pohoda-digest
+```
+
+This adds all digest tools to your MultiFlexi environment:
+
+- **Daily Digest** - `pohoda-daydigest`
+- **Weekly Digest** - `pohoda-weekdigest`
+- **Monthly Digest** - `pohoda-monthdigest`
+- **Yearly Digest** - `pohoda-yeardigest`
+- **All-time Digest** - `pohoda-alltimedigest`
+
+### MultiFlexi Configuration
+
+Each MultiFlexi app supports the following environment variables:
+
+- `POHODA_URL` - Pohoda mServer URL
+- `POHODA_ICO` - Company identification number (IČO)
+- `POHODA_USERNAME` - API username
+- `POHODA_PASSWORD` - API password
+- `THEME` - Report theme (`bootstrap` or `email`)
+- `EMAIL_ADDRESS` - Send digest to email address
+- `OUTPUT_FILE` - Save output to file
+- `OUTPUT_FORMAT` - Output format (`html` or `json`)
+- `MODULES` - Comma-separated list of modules
+
 ### Programmatic Usage
 
 ```php
