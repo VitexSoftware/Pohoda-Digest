@@ -1,0 +1,23 @@
+Package: pohoda-digest
+Version: 1.0.0
+Architecture: all
+Maintainer: Vítězslav Dvořák <info@vitexsoftware.cz>
+Installed-Size: 71
+Depends: php-cli, php-vitexsoftware-digest-modules (>= 1.0), php-vitexsoftware-digest-renderer (>= 1.0), php-vitexsoftware-pohoda-connector (>= 2.0), composer, cron
+Section: web
+Priority: optional
+Homepage: https://github.com/VitexSoftware/Pohoda-Digest
+Description: Analytics and reporting tool for Money S3/Pohoda accounting
+ Pohoda-Digest is a comprehensive analytics and reporting tool for Money S3
+ and Pohoda accounting systems. It generates detailed financial reports,
+ monitors business metrics, and provides insights through various modules.
+ .
+ Features:
+  * Integration with Money S3/Pohoda via mServer
+  * Modular analytics system
+  * HTML reports with multiple themes
+  * Command-line interface for automation
+  * Cron-ready for scheduled reporting
+  * Outcoming invoices analysis
+  * Customer debt monitoring
+  * Customizable report generation

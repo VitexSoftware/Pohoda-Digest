@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    remove|purge)
+        # Remove cron job
+        rm -f /etc/cron.d/pohoda-digest
+        
+        # Clean up cache (but preserve logs for investigation)
+        rm -rf /var/cache/pohoda-digest
+        
+        if [ "$1" = "purge" ]; then
+            # Remove logs on purge
+            rm -rf /var/log/pohoda-digest
+            # Remove configuration
+            rm -rf /etc/pohoda-digest
+        fi
+        ;;
+esac
+
+
+
+exit 0

@@ -1,0 +1,2 @@
+# Pohoda-Digest daily report
+0 6 * * * root /usr/bin/pohoda-digest --quiet

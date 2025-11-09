@@ -1,0 +1,41 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        # Setup composer autoloader
+        cd /usr/share/pohoda-digest
+        if [ -x /usr/bin/composer ]; then
+            composer install --no-dev --optimize-autoloader 2>/dev/null || true
+        fi
+        
+        # Create log directory
+        mkdir -p /var/log/pohoda-digest
+        chown root:adm /var/log/pohoda-digest
+        chmod 755 /var/log/pohoda-digest
+        
+        # Create cache directory
+        mkdir -p /var/cache/pohoda-digest
+        chown www-data:www-data /var/cache/pohoda-digest
+        chmod 755 /var/cache/pohoda-digest
+        
+        # Set permissions on config files
+        if [ -d /etc/pohoda-digest ]; then
+            chown -R root:root /etc/pohoda-digest
+            chmod -R 644 /etc/pohoda-digest
+        fi
+        
+        # Enable cron job
+        if [ -f /etc/cron.d/pohoda-digest ]; then
+            chmod 644 /etc/cron.d/pohoda-digest
+        fi
+        
+        echo "Pohoda-Digest installed successfully!"
+        echo "Configure your Pohoda connection in /etc/pohoda-digest/"
+        echo "Run 'pohoda-digest --help' for usage information"
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

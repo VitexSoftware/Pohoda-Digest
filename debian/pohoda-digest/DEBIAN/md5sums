@@ -1,0 +1,7 @@
+93301e36df8de72732f873201d62e261  usr/bin/pohoda-digest
+c2fe7ed09b11bfedec0820e7fe633f08  usr/share/doc/pohoda-digest/changelog.gz
+4e975289e6e362bdbf3717933d7a8054  usr/share/pohoda-digest/DataProvider/PohodaDataProvider.php
+c814e47562d51a8540337caad93c6fc4  usr/share/pohoda-digest/Modules/PohodaDebtors.php
+fad4320c9654115fb1bb793d06b281d7  usr/share/pohoda-digest/Modules/PohodaOutcomingInvoices.php
+d2b2ba6b59f3a50b677e7be92eb6ddfc  usr/share/pohoda-digest/PohodaDigestor.php
+37b11d8c382b854fa95f9f6a15062382  usr/share/pohoda-digest/composer.json

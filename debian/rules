@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install application files
+	mkdir -p debian/pohoda-digest/usr/share/pohoda-digest
+	cp -r src/* debian/pohoda-digest/usr/share/pohoda-digest/
+	cp composer.json debian/pohoda-digest/usr/share/pohoda-digest/
+	
+	# Install CLI tool
+	mkdir -p debian/pohoda-digest/usr/bin
+	cp bin/pohoda-digest debian/pohoda-digest/usr/bin/
+	chmod +x debian/pohoda-digest/usr/bin/pohoda-digest
+	
+	# Install configuration
+	mkdir -p debian/pohoda-digest/etc/pohoda-digest
+	cp -r config/* debian/pohoda-digest/etc/pohoda-digest/ || true
+	
+	# Install cron configuration
+	mkdir -p debian/pohoda-digest/etc/cron.d
+	echo "# Pohoda-Digest daily report" > debian/pohoda-digest/etc/cron.d/pohoda-digest
+	echo "0 6 * * * root /usr/bin/pohoda-digest --quiet" >> debian/pohoda-digest/etc/cron.d/pohoda-digest
+
+override_dh_auto_test:
+	# Skip tests for now - can be enabled when test suite is expanded
+
+override_dh_installchangelogs:
+	dh_installchangelogs

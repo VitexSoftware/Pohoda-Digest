@@ -1,0 +1,12 @@
+pohoda-digest (1.0.0) unstable; urgency=medium
+
+  * Initial release
+  * Analytics and reporting tool for Money S3/Pohoda
+  * Integration with mServer for data access
+  * Modular analytics system with multiple report types
+  * Command-line interface for automation
+  * HTML reports with Bootstrap and Email themes
+  * Outcoming invoices and debtor analysis modules
+  * Cron-ready for scheduled reporting
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Mon, 23 Dec 2024 12:00:00 +0200

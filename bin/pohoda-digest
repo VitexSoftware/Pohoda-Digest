@@ -1,0 +1,237 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Pohoda-Digest CLI Tool
+ * 
+ * @author Vítězslav Dvořák <info@vitexsoftware.cz>
+ * @license MIT
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use VitexSoftware\PohodaDigest\PohodaDataProvider;
+use VitexSoftware\DigestModules\ModuleRunner;
+use VitexSoftware\DigestRenderer\BootstrapTheme;
+use VitexSoftware\DigestRenderer\EmailTheme;
+
+/**
+ * Show usage information
+ */
+function showUsage(): void {
+    echo "Pohoda-Digest CLI Tool\n";
+    echo "Usage: pohoda-digest [OPTIONS]\n\n";
+    echo "Options:\n";
+    echo "  --config=FILE    Configuration file (default: /etc/pohoda-digest/pohoda.conf)\n";
+    echo "  --output=DIR     Output directory (default: /var/cache/pohoda-digest)\n";
+    echo "  --theme=THEME    Theme to use: bootstrap, email (default: bootstrap)\n";
+    echo "  --modules=LIST   Comma-separated list of modules to run\n";
+    echo "  --quiet          Suppress output\n";
+    echo "  --verbose        Verbose output\n";
+    echo "  --help           Show this help\n";
+    echo "  --version        Show version\n\n";
+    echo "Examples:\n";
+    echo "  pohoda-digest\n";
+    echo "  pohoda-digest --theme=email --modules=outcoming_invoices,debtors\n";
+    echo "  pohoda-digest --config=/custom/config.conf --output=/tmp/reports\n";
+}
+
+/**
+ * Show version information
+ */
+function showVersion(): void {
+    echo "Pohoda-Digest v1.0.0\n";
+    echo "Analytics and reporting tool for Money S3/Pohoda\n";
+    echo "Part of VitexSoftware ecosystem\n";
+}
+
+/**
+ * Load configuration from file
+ */
+function loadConfig(string $configFile): array {
+    $config = [
+        'POHODA_HOST' => 'localhost',
+        'POHODA_PORT' => '5435',
+        'POHODA_DATABASE' => '',
+        'REPORT_THEME' => 'bootstrap',
+        'OUTPUT_DIR' => '/var/cache/pohoda-digest',
+        'LOG_LEVEL' => 'info',
+        'MODULES' => 'outcoming_invoices,debtors',
+        'CACHE_TTL' => '3600'
+    ];
+    
+    if (file_exists($configFile)) {
+        $lines = file($configFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line) || $line[0] === '#') {
+                continue;
+            }
+            if (strpos($line, '=') !== false) {
+                [$key, $value] = explode('=', $line, 2);
+                $config[trim($key)] = trim($value);
+            }
+        }
+    }
+    
+    return $config;
+}
+
+/**
+ * Main function
+ */
+function main(array $argv): int {
+    $options = [
+        'config' => '/etc/pohoda-digest/pohoda.conf',
+        'output' => null,
+        'theme' => null,
+        'modules' => null,
+        'quiet' => false,
+        'verbose' => false
+    ];
+    
+    // Parse command line arguments
+    for ($i = 1; $i < count($argv); $i++) {
+        $arg = $argv[$i];
+        
+        if ($arg === '--help' || $arg === '-h') {
+            showUsage();
+            return 0;
+        }
+        
+        if ($arg === '--version' || $arg === '-v') {
+            showVersion();
+            return 0;
+        }
+        
+        if ($arg === '--quiet' || $arg === '-q') {
+            $options['quiet'] = true;
+            continue;
+        }
+        
+        if ($arg === '--verbose') {
+            $options['verbose'] = true;
+            continue;
+        }
+        
+        if (strpos($arg, '--config=') === 0) {
+            $options['config'] = substr($arg, 9);
+            continue;
+        }
+        
+        if (strpos($arg, '--output=') === 0) {
+            $options['output'] = substr($arg, 9);
+            continue;
+        }
+        
+        if (strpos($arg, '--theme=') === 0) {
+            $options['theme'] = substr($arg, 8);
+            continue;
+        }
+        
+        if (strpos($arg, '--modules=') === 0) {
+            $options['modules'] = substr($arg, 10);
+            continue;
+        }
+        
+        if (!$options['quiet']) {
+            echo "Unknown option: $arg\n";
+            return 1;
+        }
+    }
+    
+    try {
+        // Load configuration
+        $config = loadConfig($options['config']);
+        
+        // Override config with command line options
+        if ($options['output'] !== null) {
+            $config['OUTPUT_DIR'] = $options['output'];
+        }
+        if ($options['theme'] !== null) {
+            $config['REPORT_THEME'] = $options['theme'];
+        }
+        if ($options['modules'] !== null) {
+            $config['MODULES'] = $options['modules'];
+        }
+        
+        if (!$options['quiet']) {
+            echo "Starting Pohoda-Digest...\n";
+            if ($options['verbose']) {
+                echo "Configuration loaded from: {$options['config']}\n";
+                echo "Output directory: {$config['OUTPUT_DIR']}\n";
+                echo "Theme: {$config['REPORT_THEME']}\n";
+                echo "Modules: {$config['MODULES']}\n";
+            }
+        }
+        
+        // Create output directory if it doesn't exist
+        if (!is_dir($config['OUTPUT_DIR'])) {
+            mkdir($config['OUTPUT_DIR'], 0755, true);
+        }
+        
+        // Initialize data provider
+        $dataProvider = new PohodaDataProvider(
+            $config['POHODA_HOST'],
+            (int)$config['POHODA_PORT'],
+            $config['POHODA_DATABASE']
+        );
+        
+        // Initialize theme
+        $theme = match($config['REPORT_THEME']) {
+            'email' => new EmailTheme(),
+            default => new BootstrapTheme(),
+        };
+        
+        // Initialize module runner
+        $runner = new ModuleRunner($dataProvider, $theme);
+        
+        // Parse and run modules
+        $modules = array_map('trim', explode(',', $config['MODULES']));
+        foreach ($modules as $moduleName) {
+            if (!$options['quiet']) {
+                echo "Running module: $moduleName\n";
+            }
+            
+            try {
+                $result = $runner->runModule($moduleName);
+                
+                // Save result to file
+                $outputFile = $config['OUTPUT_DIR'] . '/' . $moduleName . '_' . date('Y-m-d_H-i-s') . '.html';
+                file_put_contents($outputFile, $result);
+                
+                if (!$options['quiet']) {
+                    echo "Report saved: $outputFile\n";
+                }
+                
+            } catch (\Exception $e) {
+                if (!$options['quiet']) {
+                    echo "Error running module $moduleName: " . $e->getMessage() . "\n";
+                }
+                if ($options['verbose']) {
+                    echo "Stack trace: " . $e->getTraceAsString() . "\n";
+                }
+            }
+        }
+        
+        if (!$options['quiet']) {
+            echo "Pohoda-Digest completed successfully!\n";
+        }
+        
+        return 0;
+        
+    } catch (\Exception $e) {
+        if (!$options['quiet']) {
+            echo "Fatal error: " . $e->getMessage() . "\n";
+        }
+        if ($options['verbose']) {
+            echo "Stack trace: " . $e->getTraceAsString() . "\n";
+        }
+        return 1;
+    }
+}
+
+// Run the application
+exit(main($argv));
