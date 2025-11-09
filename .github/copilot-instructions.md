@@ -1,17 +1,37 @@
 ---
-description: Pohoda-Digest - analytical digest generator for Stormware Pohoda accounting system
+description: Pohoda-Digest - analytics and reporting tool for Money S3/Pohoda accounting system
 applyTo: '**'
 ---
 
 # Pohoda-Digest - Copilot Instructions
 
 ## Project Overview
-Pohoda-Digest is a comprehensive analytical digest generator for Stormware Pohoda accounting system:
-- Uses modular architecture with DigestModules and DigestRenderer
-- Connects to Pohoda via PHP-Pohoda-Connector
-- Provides CLI interface and programmatic API
-- Supports multiple output formats (HTML, JSON, Email)
-- Demonstrates extensibility to other accounting systems
+Pohoda-Digest is a **complete analytics solution** for Money S3/Pohoda accounting system:
+- **Modular Architecture**: Built on DigestModules (data) + DigestRenderer (HTML) libraries
+- **Pohoda Integration**: Connects via mServer using existing PHP-Pohoda-Connector
+- **Production Ready**: Full CLI interface, cron jobs, configuration management  
+- **Multi-Format Output**: HTML reports, JSON data, email notifications
+- **Debian Packaged**: Professional distribution with `pohoda-digest` package
+
+## 🏗️ System Architecture
+This is a **complete application** that demonstrates the full ecosystem:
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Pohoda/mServer │◄──┤ PohodaDataProvider│◄──┤  DigestModules  │
+│                 │    │                  │    │                 │
+│ • XML/SQL API   │    │ • Data Adapter   │    │ • Analytics     │
+│ • Business Data │    │ • Connection Mgmt│    │ • JSON Output   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                        │
+                                                        ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│    HTML Report  │◄──┤ DigestRenderer   │◄──┤  Pohoda-Digest  │
+│                 │    │                  │    │                 │
+│ • Bootstrap UI  │    │ • Theme Engine   │    │ • CLI Interface │
+│ • Email Format  │    │ • HTML Generator │    │ • Cron Jobs     │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
 
 ## Architecture Guidelines
 - **Modular Design**: Uses DigestModules for data, DigestRenderer for output
