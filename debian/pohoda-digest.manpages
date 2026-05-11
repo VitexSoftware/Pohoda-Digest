@@ -1,0 +1,5 @@
+debian/pohoda-daydigest.1
+debian/pohoda-weekdigest.1
+debian/pohoda-monthdigest.1
+debian/pohoda-yeardigest.1
+debian/pohoda-alltimedigest.1

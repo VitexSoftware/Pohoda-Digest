@@ -97,31 +97,30 @@ class PohodaDataProvider implements DataProviderInterface
     /**
      * Get data from the accounting system
      *
-     * @param string $entity Entity type (invoices, customers, etc.)
+     * @param string $entity Entity type (use DataProviderInterface::ENTITY_* constants)
      * @param array<string, mixed> $conditions Query conditions
      * @param array<string> $columns Columns to retrieve
      * @return array<array<string, mixed>> Raw data from the system
      */
     public function getData(string $entity, array $conditions = [], array $columns = []): array
     {
-        switch ($entity) {
-            case 'invoices':
-                $dateFrom = $conditions['dateFrom'] ?? date('Y-m-01');
-                $dateTo = $conditions['dateTo'] ?? date('Y-m-t');
-                return $this->getInvoices($dateFrom, $dateTo, $conditions);
-                
-            case 'overdue_invoices':
-                $asOfDate = $conditions['asOfDate'] ?? date('Y-m-d');
-                return $this->getOverdueInvoices($asOfDate, $conditions);
-                
-            case 'bank_transactions':
-                $dateFrom = $conditions['dateFrom'] ?? date('Y-m-01');
-                $dateTo = $conditions['dateTo'] ?? date('Y-m-t');
-                return $this->getBankTransactions($dateFrom, $dateTo, $conditions);
-                
-            default:
-                return [];
-        }
+        $dateFrom = $conditions['dateFrom'] ?? date('Y-m-01');
+        $dateTo = $conditions['dateTo'] ?? date('Y-m-t');
+
+        return match ($entity) {
+            DataProviderInterface::ENTITY_OUTCOMING_INVOICES,
+            DataProviderInterface::ENTITY_INCOMING_INVOICES,
+            'invoices' => $this->getInvoices($dateFrom, $dateTo, $conditions),
+            'overdue_invoices' => $this->getOverdueInvoices($conditions['asOfDate'] ?? date('Y-m-d'), $conditions),
+            DataProviderInterface::ENTITY_BANK_STATEMENTS,
+            'bank_transactions' => $this->getBankTransactions($dateFrom, $dateTo, $conditions),
+            DataProviderInterface::ENTITY_CONTACTS,
+            'customers', 'suppliers' => $this->getContacts($conditions),
+            DataProviderInterface::ENTITY_PRODUCTS => $this->getProducts($conditions),
+            DataProviderInterface::ENTITY_REMINDERS => [],  // Not directly available in Pohoda mServer
+            DataProviderInterface::ENTITY_ORDERS => [],      // TODO: implement when needed
+            default => [],
+        };
     }
 
     /**
@@ -141,7 +140,14 @@ class PohodaDataProvider implements DataProviderInterface
      */
     public function getSupportedEntities(): array
     {
-        return ['invoices', 'overdue_invoices', 'bank_transactions', 'customers', 'suppliers'];
+        return [
+            DataProviderInterface::ENTITY_OUTCOMING_INVOICES,
+            DataProviderInterface::ENTITY_INCOMING_INVOICES,
+            DataProviderInterface::ENTITY_BANK_STATEMENTS,
+            DataProviderInterface::ENTITY_CONTACTS,
+            DataProviderInterface::ENTITY_PRODUCTS,
+            'overdue_invoices',
+        ];
     }
 
     /**
@@ -420,8 +426,84 @@ class PohodaDataProvider implements DataProviderInterface
      */
     private function parseCurrency(array $currencyData): string
     {
-        return $currencyData['currency']['ids'] ?? 
-               $currencyData['currency'] ?? 
-               'CZK'; // Default for Czech Pohoda installations
+        return $currencyData['currency']['ids'] ??
+               $currencyData['currency'] ??
+               'CZK';
+    }
+
+    /**
+     * Get contacts (address book) from Pohoda
+     *
+     * @param array<string, mixed> $conditions Query conditions
+     * @return array<int, array<string, mixed>> Contact records
+     */
+    private function getContacts(array $conditions = []): array
+    {
+        try {
+            $addressBook = new \mServer\Addressbook();
+            $data = $addressBook->loadFromPohoda($conditions);
+
+            if (!$data || !is_array($data)) {
+                return [];
+            }
+
+            $normalized = [];
+
+            foreach ($data as $contact) {
+                $normalized[] = [
+                    'id' => $contact['id'] ?? uniqid(),
+                    'name' => $contact['identity']['address']['name'] ?? '',
+                    'ico' => $contact['identity']['address']['ico'] ?? '',
+                    'email' => $contact['identity']['address']['email'] ?? '',
+                    'phone' => $contact['identity']['address']['phone'] ?? '',
+                    'city' => $contact['identity']['address']['city'] ?? '',
+                    'raw_data' => $contact,
+                ];
+            }
+
+            return $normalized;
+        } catch (\Exception $e) {
+            error_log('Pohoda contacts fetch error: ' . $e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
+     * Get products (stock/price list) from Pohoda
+     *
+     * @param array<string, mixed> $conditions Query conditions
+     * @return array<int, array<string, mixed>> Product records
+     */
+    private function getProducts(array $conditions = []): array
+    {
+        try {
+            $stock = new \mServer\Stock();
+            $data = $stock->loadFromPohoda($conditions);
+
+            if (!$data || !is_array($data)) {
+                return [];
+            }
+
+            $normalized = [];
+
+            foreach ($data as $product) {
+                $normalized[] = [
+                    'id' => $product['id'] ?? uniqid(),
+                    'code' => $product['stockHeader']['code'] ?? '',
+                    'name' => $product['stockHeader']['name'] ?? '',
+                    'quantity' => (float) ($product['stockHeader']['count'] ?? 0),
+                    'buy_price' => (float) ($product['stockHeader']['purchasingPrice'] ?? 0),
+                    'sell_price' => (float) ($product['stockHeader']['sellingPrice'] ?? 0),
+                    'raw_data' => $product,
+                ];
+            }
+
+            return $normalized;
+        } catch (\Exception $e) {
+            error_log('Pohoda products fetch error: ' . $e->getMessage());
+
+            return [];
+        }
     }
 }

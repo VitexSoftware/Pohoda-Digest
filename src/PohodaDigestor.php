@@ -16,268 +16,176 @@ declare(strict_types=1);
 namespace VitexSoftware\PohodaDigest;
 
 use VitexSoftware\DigestModules\Core\ModuleRunner;
+use VitexSoftware\DigestModules\Modules;
 use VitexSoftware\DigestRenderer\DigestRenderer;
 use VitexSoftware\PohodaDigest\DataProvider\PohodaDataProvider;
-use VitexSoftware\PohodaDigest\Modules\PohodaOutcomingInvoices;
-use VitexSoftware\PohodaDigest\Modules\PohodaDebtors;
-use Ease\Shared;
 
 /**
- * Pohoda Digest Generator
- * 
- * Main class for generating analytical digests from Pohoda accounting data.
+ * Pohoda Digestor using modular architecture.
+ *
+ * Collects data via digest-modules (PohodaDataProvider),
+ * renders via DigestRenderer (Markdown → HTML/PDF).
+ *
+ * Supports OUTPUT_FORMAT env: md (default), html, pdf.
  *
  * @author Vítězslav Dvořák <info@vitexsoftware.cz>
  */
 class PohodaDigestor
 {
-    private PohodaDataProvider $dataProvider;
+    /** @var array<string, string> Universal modules (all periods) */
+    private const UNIVERSAL_MODULES = [
+        'debtors' => Modules\Debtors::class,
+        'outcoming_invoices' => Modules\OutcomingInvoices::class,
+        'incoming_invoices' => Modules\IncomingInvoices::class,
+        'incoming_payments' => Modules\IncomingPayments::class,
+        'outcoming_payments' => Modules\OutcomingPayments::class,
+        'new_customers' => Modules\NewCustomers::class,
+        'without_email' => Modules\WithoutEmail::class,
+        'without_tel' => Modules\WithoutTel::class,
+        'waiting_income' => Modules\WaitingIncome::class,
+        'waiting_payments' => Modules\WaitingPayments::class,
+        'reminds' => Modules\Reminds::class,
+        'best_sellers' => Modules\BestSellers::class,
+        'unmatched_payments' => Modules\UnmatchedPayments::class,
+        'unmatched_invoices' => Modules\UnmatchedInvoices::class,
+        'outcoming_invoices_hidden' => Modules\OutcomingInvoicesHiddenToCustomer::class,
+    ];
+
+    /** @var array<string, array<string, string>> Period-specific modules */
+    private const PERIOD_MODULES = [
+        'daily' => [],
+        'weekly' => [
+            'weekly_income_chart' => Modules\Weekly\WeeklyIncomeChart::class,
+        ],
+        'monthly' => [
+            'daily_income_chart' => Modules\Monthly\DailyIncomeChart::class,
+        ],
+        'yearly' => [],
+        'alltime' => [
+            'purchase_price_lower_than_sales' => Modules\AllTime\PurchasePriceLowerThanSales::class,
+        ],
+    ];
+
+    private string $subject;
     private ModuleRunner $moduleRunner;
     private DigestRenderer $renderer;
-    
-    /**
-     * Available modules
-     *
-     * @var array<string, \VitexSoftware\DigestModules\Core\ModuleInterface>
-     */
-    private array $availableModules;
 
     /**
-     * Initialize Pohoda Digestor
-     *
-     * @param array<string, mixed> $config Configuration array
+     * @param string               $subject     Digest title
+     * @param array<string, mixed> $pohodaConfig Pohoda connection config
      */
-    public function __construct(array $config = [])
+    public function __construct(string $subject, array $pohodaConfig = [])
     {
-        // Initialize data provider
-        $this->dataProvider = new PohodaDataProvider($config);
-        
-        // Initialize module runner
-        $this->moduleRunner = new ModuleRunner($this->dataProvider);
-        
-        // Initialize renderer
+        $this->subject = $subject;
+        $dataProvider = new PohodaDataProvider($pohodaConfig);
+        $this->moduleRunner = new ModuleRunner($dataProvider);
         $this->renderer = new DigestRenderer();
-        
-        // Register available modules
-        $this->initializeModules();
     }
 
     /**
-     * Create Pohoda Digestor with environment configuration
+     * Register universal modules plus period-specific ones.
      *
-     * @param string|null $envFile Path to .env file
-     * @return self
+     * @param string $periodType daily|weekly|monthly|yearly|alltime
      */
-    public static function createFromEnv(?string $envFile = null): self
+    public function registerModules(string $periodType = 'daily'): self
     {
-        if ($envFile && file_exists($envFile)) {
-            Shared::init(['POHODA_URL', 'POHODA_USERNAME', 'POHODA_PASSWORD', 'POHODA_ICO'], $envFile);
-        }
-        
-        return new self();
-    }
-
-    /**
-     * Create Pohoda Digestor with specific modules
-     *
-     * @param array<string> $moduleNames Module names to include
-     * @param array<string, mixed> $config Configuration array
-     * @return self
-     */
-    public static function createWithModules(array $moduleNames, array $config = []): self
-    {
-        $digestor = new self($config);
-        
-        // Filter available modules
-        $selectedModules = [];
-        foreach ($moduleNames as $moduleName) {
-            if (isset($digestor->availableModules[$moduleName])) {
-                $selectedModules[$moduleName] = $digestor->availableModules[$moduleName];
-            }
-        }
-        
-        $digestor->availableModules = $selectedModules;
-        
-        return $digestor;
-    }
-
-    /**
-     * Initialize available modules
-     */
-    private function initializeModules(): void
-    {
-        $this->availableModules = [
-            'outcoming_invoices' => new PohodaOutcomingInvoices(),
-            'debtors' => new PohodaDebtors(),
-        ];
-    }
-
-    /**
-     * Generate digest for the specified period
-     *
-     * @param \DatePeriod $period Time period to analyze
-     * @param string $theme Theme name (bootstrap, email)
-     * @return string Generated HTML
-     */
-    public function generateHtml(\DatePeriod $period, string $theme = 'bootstrap'): string
-    {
-        // Get JSON data from modules
-        $jsonData = $this->getJsonData($period);
-        
-        // Set theme and render HTML
-        $this->renderer->setTheme($theme);
-        return $this->renderer->render($jsonData);
-    }
-
-    /**
-     * Get JSON data for the specified period
-     *
-     * @param \DatePeriod $period Time period to analyze
-     * @return array<string, mixed> JSON data structure
-     */
-    public function getJsonData(\DatePeriod $period): array
-    {
-        // Run modules and collect data
-        $moduleData = [];
-        $benchmarks = [];
-        
-        foreach ($this->availableModules as $moduleName => $module) {
-            $startTime = microtime(true);
-            $result = $module->process($this->dataProvider, $period);
-            $endTime = microtime(true);
-            
-            $moduleData[$moduleName] = $result;
-            $benchmarks[$moduleName] = [
-                'start' => $startTime,
-                'end' => $endTime,
-                'duration' => $endTime - $startTime,
-            ];
+        foreach (self::UNIVERSAL_MODULES as $key => $class) {
+            $this->moduleRunner->addModule($key, $class);
         }
 
-        // Create digest structure
-        return [
-            'digest' => [
-                'period' => [
-                    'start' => $period->getStartDate()->format('Y-m-d'),
-                    'end' => $period->getEndDate()->format('Y-m-d'),
-                ],
-                'provider' => $this->dataProvider->getSystemName(),
-                'timestamp' => date('c'),
-                'company' => $this->dataProvider->getCompanyInfo(),
-            ],
-            'modules' => $moduleData,
-            'benchmarks' => $benchmarks,
-        ];
+        foreach (self::PERIOD_MODULES[$periodType] ?? [] as $key => $class) {
+            $this->moduleRunner->addModule($key, $class);
+        }
+
+        return $this;
     }
 
     /**
-     * Save digest to file
-     *
-     * @param \DatePeriod $period Time period to analyze
-     * @param string $filePath Output file path
-     * @param string $format Output format (html, json)
-     * @param string $theme Theme name (for HTML output)
-     * @return bool Success status
+     * Register a single additional module.
      */
-    public function saveToFile(
-        \DatePeriod $period,
-        string $filePath,
-        string $format = 'html',
-        string $theme = 'bootstrap'
-    ): bool {
-        try {
-            $content = match ($format) {
-                'json' => json_encode($this->getJsonData($period), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-                'html' => $this->generateHtml($period, $theme),
-                default => throw new \InvalidArgumentException("Unsupported format: {$format}")
+    public function addModule(string $moduleKey, string $moduleClass): self
+    {
+        $this->moduleRunner->addModule($moduleKey, $moduleClass);
+
+        return $this;
+    }
+
+    /**
+     * Generate digest output.
+     *
+     * @param \DatePeriod $period Time period
+     * @param string|null $format Output format (null = read OUTPUT_FORMAT env, fallback 'html')
+     *
+     * @return string Rendered output
+     */
+    public function generate(\DatePeriod $period, ?string $format = null): string
+    {
+        $format ??= \Ease\Shared::cfg('OUTPUT_FORMAT', 'html');
+
+        if ($format === 'html' || $format === 'pdf') {
+            $theme = \Ease\Shared::cfg('THEME', 'bootstrap');
+            $this->renderer->setTheme($theme);
+        }
+
+        $digestData = $this->moduleRunner->run($period);
+
+        return $this->renderer->render($digestData, $format);
+    }
+
+    /**
+     * Run the full digest pipeline: generate, save to file, send by email.
+     *
+     * @param \DatePeriod $period Time period
+     */
+    public function run(\DatePeriod $period): void
+    {
+        $format = \Ease\Shared::cfg('OUTPUT_FORMAT', 'html');
+        $output = $this->generate($period, $format);
+
+        // Save to file
+        $saveTo = \Ease\Shared::cfg('DIGEST_SAVETO', \Ease\Shared::cfg('RESULT_FILE', ''));
+
+        if ($saveTo) {
+            $ext = match ($format) {
+                'md' => '.md',
+                'pdf' => '.pdf',
+                default => '.html',
             };
-            
-            return file_put_contents($filePath, $content) !== false;
-            
-        } catch (\Exception $e) {
-            error_log("Failed to save digest: " . $e->getMessage());
-            return false;
+
+            $filename = str_ends_with($saveTo, $ext) ? $saveTo : $saveTo . $ext;
+            file_put_contents($filename, $output);
+            \Ease\Shared::logger()->addToLog(sprintf(_('Saved to %s'), $filename), 'success');
+        }
+
+        // Send email (always as HTML for email clients)
+        $emailTo = \Ease\Shared::cfg('DIGEST_MAILTO', \Ease\Shared::cfg('EASE_MAILTO', ''));
+
+        if ($emailTo) {
+            $emailHtml = ($format === 'html')
+                ? $output
+                : $this->generate($period, 'html');
+
+            $this->sendEmail($emailTo, $emailHtml);
         }
     }
 
     /**
-     * Send digest by email
+     * Send digest by email via Symfony Mailer.
      *
-     * @param \DatePeriod $period Time period to analyze
-     * @param string $toEmail Recipient email address
-     * @param string $theme Theme name (email recommended)
-     * @param array<string, mixed> $emailOptions Additional email options
-     * @return bool Success status
+     * @param string $emailTo  Recipient address(es)
+     * @param string $htmlBody Full HTML document
      */
-    public function sendByEmail(
-        \DatePeriod $period,
-        string $toEmail,
-        string $theme = 'email',
-        array $emailOptions = []
-    ): bool {
+    private function sendEmail(string $emailTo, string $htmlBody): void
+    {
         try {
-            $html = $this->generateHtml($period, $theme);
-            $companyInfo = $this->dataProvider->getCompanyInfo();
-            
-            $subject = $emailOptions['subject'] ?? 
-                "Pohoda Digest Report - {$period->getStartDate()->format('M Y')} - {$companyInfo['name']}";
-            
-            $headers = [
-                'From' => $emailOptions['from'] ?? 'noreply@' . gethostname(),
-                'Content-Type' => 'text/html; charset=UTF-8',
-                'MIME-Version' => '1.0',
-            ];
-            
-            $headerString = '';
-            foreach ($headers as $key => $value) {
-                $headerString .= "{$key}: {$value}\r\n";
-            }
-            
-            return mail($toEmail, $subject, $html, $headerString);
-            
-        } catch (\Exception $e) {
-            error_log("Failed to send digest email: " . $e->getMessage());
-            return false;
+            $mailer = new Mailer($emailTo, $this->subject);
+            $mailer->setHtmlContent($htmlBody);
+            $mailer->send();
+        } catch (\Throwable $e) {
+            \Ease\Shared::logger()->addToLog(
+                sprintf(_('Email sending failed: %s'), $e->getMessage()),
+                'warning',
+            );
         }
-    }
-
-    /**
-     * Test Pohoda connection
-     *
-     * @return bool Connection status
-     */
-    public function testConnection(): bool
-    {
-        return $this->dataProvider->testConnection();
-    }
-
-    /**
-     * Get available modules
-     *
-     * @return array<string> Module names
-     */
-    public function getAvailableModules(): array
-    {
-        return array_keys($this->availableModules);
-    }
-
-    /**
-     * Get data provider instance
-     *
-     * @return PohodaDataProvider
-     */
-    public function getDataProvider(): PohodaDataProvider
-    {
-        return $this->dataProvider;
-    }
-
-    /**
-     * Get renderer instance
-     *
-     * @return DigestRenderer
-     */
-    public function getRenderer(): DigestRenderer
-    {
-        return $this->renderer;
     }
 }

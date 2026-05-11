@@ -1,6 +1,20 @@
-#!/bin/bash
-# Calculate first and last day of current year
-year_start=$(date '+%Y-01-01')
-year_end=$(date '+%Y-12-31')
+#!/usr/bin/env php
+<?php
 
-php -f /usr/share/pohoda-digest/bin/pohoda-digest.php -- --start="$year_start" --end="$year_end"
+declare(strict_types=1);
+
+namespace VitexSoftware\PohodaDigest;
+
+\define('EASE_APPNAME', 'Pohoda 🎆 Yearly Digest');
+
+require_once __DIR__ . '/init.php';
+
+$start = new \DateTime('-1 year');
+$end = new \DateTime();
+$period = new \DatePeriod($start, new \DateInterval('P1D'), $end);
+
+$subject = sprintf(_('Pohoda 🎆 Yearly digest'));
+
+$digestor = new PohodaDigestor($subject);
+$digestor->registerModules('yearly');
+$digestor->run($period);
