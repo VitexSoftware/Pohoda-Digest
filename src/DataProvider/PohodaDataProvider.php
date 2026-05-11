@@ -15,118 +15,88 @@ declare(strict_types=1);
 
 namespace VitexSoftware\PohodaDigest\DataProvider;
 
-use VitexSoftware\DigestModules\Core\DataProviderInterface;
+use Ease\Shared;
+use mServer\Bank;
 use mServer\Client;
 use mServer\Invoice;
-use mServer\Bank;
-use mServer\UserList;
-use Ease\Shared;
+use VitexSoftware\DigestModules\Core\DataProviderInterface;
 
 /**
  * Pohoda Data Provider
- * 
- * Implements DataProviderInterface for accessing Pohoda accounting data
- * through the PHP-Pohoda-Connector.
+ *
+ * Fetches data from Pohoda via the PHP-Pohoda-Connector (mServer) and normalizes
+ * all returned records to the neutral field schema defined by DataProviderInterface.
+ *
+ * Filter conditions (FILTER_* constants) that Pohoda does not support server-side
+ * are applied as in-memory post-filters after fetching.
  *
  * @author Vítězslav Dvořák <info@vitexsoftware.cz>
  */
 class PohodaDataProvider implements DataProviderInterface
 {
-    private Client $client;
-    private Invoice $invoiceClient;
-    private Bank $bankClient;
     private array $connectionInfo;
 
     /**
-     * Initialize Pohoda data provider
-     *
-     * @param array<string, mixed> $config Configuration array with connection details
+     * @param array<string, mixed> $config Connection config: url, username, password, ico
      */
     public function __construct(array $config = [])
     {
-        // Load configuration from environment or provided config
         if (empty($config)) {
             Shared::init(['POHODA_URL', 'POHODA_USERNAME', 'POHODA_PASSWORD', 'POHODA_ICO']);
             $config = [
-                'url' => Shared::cfg('POHODA_URL'),
+                'url'      => Shared::cfg('POHODA_URL'),
                 'username' => Shared::cfg('POHODA_USERNAME'),
                 'password' => Shared::cfg('POHODA_PASSWORD'),
-                'ico' => Shared::cfg('POHODA_ICO'),
+                'ico'      => Shared::cfg('POHODA_ICO'),
             ];
-        } else {
-            // Set environment variables for Pohoda connector
-            if (isset($config['url'])) {
-                Shared::cfg('POHODA_URL', $config['url']);
-            }
-            if (isset($config['username'])) {
-                Shared::cfg('POHODA_USERNAME', $config['username']);
-            }
-            if (isset($config['password'])) {
-                Shared::cfg('POHODA_PASSWORD', $config['password']);
-            }
-            if (isset($config['ico'])) {
-                Shared::cfg('POHODA_ICO', $config['ico']);
-            }
         }
 
         $this->connectionInfo = $config;
-        $this->initializeClients();
     }
 
     /**
-     * Initialize Pohoda client connections
-     */
-    private function initializeClients(): void
-    {
-        $this->client = new Client();
-        $this->invoiceClient = new Invoice();
-        $this->bankClient = new Bank();
-    }
-
-    /**
-     * Configure individual client with connection details
-     *
-     * @param Client $client Client to configure
-     */
-    private function configureClient(Client $client): void
-    {
-        // Pohoda clients are configured via global Shared configuration
-        // No additional configuration needed here
-    }
-
-    /**
-     * Get data from the accounting system
-     *
-     * @param string $entity Entity type (use DataProviderInterface::ENTITY_* constants)
-     * @param array<string, mixed> $conditions Query conditions
-     * @param array<string> $columns Columns to retrieve
-     * @return array<array<string, mixed>> Raw data from the system
+     * {@inheritDoc}
      */
     public function getData(string $entity, array $conditions = [], array $columns = []): array
     {
-        $dateFrom = $conditions['dateFrom'] ?? date('Y-m-01');
-        $dateTo = $conditions['dateTo'] ?? date('Y-m-t');
+        [$pohodaFilter, $postFilters] = $this->buildConditions($conditions);
 
-        return match ($entity) {
-            DataProviderInterface::ENTITY_OUTCOMING_INVOICES,
-            DataProviderInterface::ENTITY_INCOMING_INVOICES,
-            'invoices' => $this->getInvoices($dateFrom, $dateTo, $conditions),
-            'overdue_invoices' => $this->getOverdueInvoices($conditions['asOfDate'] ?? date('Y-m-d'), $conditions),
-            DataProviderInterface::ENTITY_BANK_STATEMENTS,
-            'bank_transactions' => $this->getBankTransactions($dateFrom, $dateTo, $conditions),
-            DataProviderInterface::ENTITY_CONTACTS,
-            'customers', 'suppliers' => $this->getContacts($conditions),
-            DataProviderInterface::ENTITY_PRODUCTS => $this->getProducts($conditions),
-            DataProviderInterface::ENTITY_REMINDERS => [],  // Not directly available in Pohoda mServer
-            DataProviderInterface::ENTITY_ORDERS => [],      // TODO: implement when needed
+        $raw = match ($entity) {
+            DataProviderInterface::ENTITY_OUTCOMING_INVOICES =>
+                $this->fetchInvoices($pohodaFilter, 'issuedInvoice'),
+
+            DataProviderInterface::ENTITY_INCOMING_INVOICES =>
+                $this->fetchInvoices($pohodaFilter, 'receivedInvoice'),
+
+            DataProviderInterface::ENTITY_BANK_STATEMENTS =>
+                $this->fetchBankTransactions($pohodaFilter),
+
+            DataProviderInterface::ENTITY_CONTACTS =>
+                $this->fetchContacts($pohodaFilter),
+
+            DataProviderInterface::ENTITY_PRODUCTS =>
+                $this->fetchProducts($pohodaFilter),
+
+            DataProviderInterface::ENTITY_REMINDERS,
+            DataProviderInterface::ENTITY_ORDERS => [],
+
             default => [],
         };
+
+        // Apply post-filters (conditions Pohoda can't filter server-side)
+        foreach ($postFilters as $filter) {
+            $raw = array_values(array_filter($raw, $filter));
+        }
+
+        $limit = isset($conditions[DataProviderInterface::FILTER_LIMIT])
+            ? (int) $conditions[DataProviderInterface::FILTER_LIMIT]
+            : 0;
+
+        return $limit > 0 ? \array_slice($raw, 0, $limit) : $raw;
     }
 
     /**
-     * Get system name/type
-     *
-     * @return string Name of the accounting system
+     * {@inheritDoc}
      */
     public function getSystemName(): string
     {
@@ -134,9 +104,7 @@ class PohodaDataProvider implements DataProviderInterface
     }
 
     /**
-     * Get supported entities
-     *
-     * @return array<string> List of supported entity types
+     * {@inheritDoc}
      */
     public function getSupportedEntities(): array
     {
@@ -146,34 +114,35 @@ class PohodaDataProvider implements DataProviderInterface
             DataProviderInterface::ENTITY_BANK_STATEMENTS,
             DataProviderInterface::ENTITY_CONTACTS,
             DataProviderInterface::ENTITY_PRODUCTS,
-            'overdue_invoices',
         ];
     }
 
     /**
-     * Check if provider supports a specific feature
-     *
-     * @param string $feature Feature name
-     * @return bool Whether the feature is supported
+     * {@inheritDoc}
      */
     public function supportsFeature(string $feature): bool
     {
-        $supportedFeatures = [
-            'invoice_analysis',
-            'overdue_tracking',
-            'bank_transactions',
-            'multi_currency',
-            'date_filtering',
-        ];
-        
-        return in_array($feature, $supportedFeatures, true);
+        return \in_array($feature, [
+            'date_filtering', 'payment_status', 'document_types',
+            'multi_currency', 'overdue_tracking',
+        ], true);
     }
 
     /**
-     * Format date for the accounting system
-     *
-     * @param \DateTime $date Date to format
-     * @return string Formatted date string
+     * {@inheritDoc}
+     */
+    public function getCompanyInfo(): array
+    {
+        return [
+            'name'       => $this->connectionInfo['ico'] ?? 'Pohoda Company',
+            'ico'        => $this->connectionInfo['ico'] ?? '',
+            'system'     => 'Pohoda',
+            'server_url' => $this->connectionInfo['url'] ?? '',
+        ];
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function formatDate(\DateTime $date): string
     {
@@ -181,287 +150,190 @@ class PohodaDataProvider implements DataProviderInterface
     }
 
     /**
-     * Format date period condition for queries
-     *
-     * @param string $column Date column name
-     * @param \DatePeriod $period Time period
-     * @return string Formatted condition
+     * {@inheritDoc}
      */
     public function formatDatePeriod(string $column, \DatePeriod $period): string
     {
-        $start = $period->getStartDate()->format('Y-m-d');
-        $end = $period->getEndDate()->format('Y-m-d');
-        
-        return "{$column} >= '{$start}' AND {$column} <= '{$end}'";
+        $start = $this->formatDate($period->getStartDate());
+        $end   = $this->formatDate($period->getEndDate());
+
+        return "dateFrom={$start}&dateTo={$end}";
     }
 
-    /**
-     * Get company information
-     *
-     * @return array<string, mixed> Company data
-     */
-    public function getCompanyInfo(): array
-    {
-        return [
-            'name' => $this->connectionInfo['ico'] . ' Company', // Pohoda doesn't directly expose company name in API
-            'ico' => $this->connectionInfo['ico'],
-            'system' => 'Pohoda',
-            'server_url' => $this->connectionInfo['url'],
-        ];
-    }
+    // ── Private helpers ────────────────────────────────────────────────────
 
     /**
-     * Get invoices for the specified period
+     * Translate neutral FILTER_* conditions into Pohoda API filter array
+     * and a list of callables for post-filtering.
      *
-     * @param string $dateFrom Start date (YYYY-MM-DD)
-     * @param string $dateTo End date (YYYY-MM-DD)
-     * @param array<string, mixed> $filters Additional filters
-     * @return array<int, array<string, mixed>> Invoice records
+     * @param array<string, mixed> $conditions Neutral filter conditions
+     * @return array{array<string, mixed>, array<callable>} [pohodaFilter, postFilters]
      */
-    public function getInvoices(string $dateFrom, string $dateTo, array $filters = []): array
+    private function buildConditions(array $conditions): array
     {
-        // Prepare date filter for Pohoda API
-        $pohodaFilter = [
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-        ];
+        $filter      = [];
+        $postFilters = [];
 
-        // Add additional filters
-        if (isset($filters['types'])) {
-            $pohodaFilter['documentTypes'] = $filters['types'];
+        foreach ($conditions as $key => $value) {
+            switch ($key) {
+                case DataProviderInterface::FILTER_DATE_PERIOD:
+                    if (is_array($value) && isset($value['period']) && $value['period'] instanceof \DatePeriod) {
+                        $filter['dateFrom'] = $this->formatDate($value['period']->getStartDate());
+                        $filter['dateTo']   = $this->formatDate($value['period']->getEndDate());
+                    }
+                    break;
+
+                case DataProviderInterface::FILTER_CANCELLED:
+                    $want = (bool) $value;
+                    $postFilters[] = static fn (array $r): bool =>
+                        ($r[DataProviderInterface::FIELD_CANCELLED] ?? false) === $want;
+                    break;
+
+                case DataProviderInterface::FILTER_OVERDUE:
+                    if ($value) {
+                        $today = date('Y-m-d');
+                        $postFilters[] = static function (array $r) use ($today): bool {
+                            $due = $r[DataProviderInterface::FIELD_DUE_DATE] ?? '';
+                            return $due !== '' && $due < $today;
+                        };
+                    }
+                    break;
+
+                case DataProviderInterface::FILTER_PAYMENT_STATUS:
+                    $want = (string) $value;
+                    $postFilters[] = static function (array $r) use ($want): bool {
+                        $status = $r[DataProviderInterface::FIELD_PAYMENT_STATUS] ?? '';
+                        return match ($want) {
+                            DataProviderInterface::PAYMENT_STATUS_UNPAID_OR_PARTIAL =>
+                                $status === DataProviderInterface::PAYMENT_STATUS_UNPAID
+                                || $status === DataProviderInterface::PAYMENT_STATUS_PARTIAL,
+                            default => $status === $want,
+                        };
+                    };
+                    break;
+
+                case DataProviderInterface::FILTER_PAYMENT_DIRECTION:
+                    $want = (string) $value;
+                    $postFilters[] = static fn (array $r): bool =>
+                        ($r[DataProviderInterface::FIELD_DIRECTION] ?? '') === $want;
+                    break;
+
+                case DataProviderInterface::FILTER_MATCHED:
+                    $want = (bool) $value;
+                    $postFilters[] = static fn (array $r): bool =>
+                        ($r[DataProviderInterface::FIELD_MATCHED] ?? false) === $want;
+                    break;
+
+                case DataProviderInterface::FILTER_ACCOUNTED:
+                    $want = (bool) $value;
+                    $postFilters[] = static fn (array $r): bool =>
+                        ($r[DataProviderInterface::FIELD_ACCOUNTED] ?? false) === $want;
+                    break;
+
+                case DataProviderInterface::FILTER_MISSING_EMAIL:
+                    if ($value) {
+                        $postFilters[] = static fn (array $r): bool =>
+                            ($r[DataProviderInterface::FIELD_EMAIL] ?? '') === '';
+                    }
+                    break;
+
+                case DataProviderInterface::FILTER_MISSING_PHONE:
+                    if ($value) {
+                        $postFilters[] = static fn (array $r): bool =>
+                            ($r[DataProviderInterface::FIELD_PHONE] ?? '') === '';
+                    }
+                    break;
+
+                case DataProviderInterface::FILTER_EXCLUDE_DOCUMENT_TYPE:
+                    $exclude = (string) $value;
+                    $postFilters[] = static fn (array $r): bool =>
+                        ($r[DataProviderInterface::FIELD_DOCUMENT_TYPE] ?? '') !== $exclude;
+                    break;
+
+                case DataProviderInterface::FILTER_DOCUMENT_TYPE:
+                    $want = (string) $value;
+                    $postFilters[] = static fn (array $r): bool =>
+                        ($r[DataProviderInterface::FIELD_DOCUMENT_TYPE] ?? '') === $want;
+                    break;
+
+                case DataProviderInterface::FILTER_LIMIT:
+                    // Handled after post-filtering in getData()
+                    break;
+            }
         }
 
+        return [$filter, $postFilters];
+    }
+
+    /**
+     * Fetch and normalize invoices from Pohoda.
+     *
+     * @param array<string, mixed> $filter Pohoda API filter
+     * @param string $invoiceType Pohoda invoice type ('issuedInvoice' or 'receivedInvoice')
+     * @return array<array<string, mixed>>
+     */
+    private function fetchInvoices(array $filter, string $invoiceType = 'issuedInvoice'): array
+    {
         try {
-            // Load invoices from Pohoda
-            $invoiceData = $this->invoiceClient->loadFromPohoda($pohodaFilter);
-            
-            if (!$invoiceData || !is_array($invoiceData)) {
+            $client = new Invoice();
+            $raw    = $client->loadFromPohoda($filter);
+
+            if (!\is_array($raw)) {
                 return [];
             }
 
-            // Convert Pohoda invoice format to standardized format
-            return $this->normalizeInvoiceData($invoiceData);
-            
+            return array_map(
+                fn (array $inv) => $this->normalizeInvoice($inv, $invoiceType),
+                $raw,
+            );
         } catch (\Exception $e) {
-            // Log error but don't fail completely
-            error_log("Pohoda invoice fetch error: " . $e->getMessage());
+            error_log('Pohoda invoice fetch error: ' . $e->getMessage());
+
             return [];
         }
     }
 
     /**
-     * Get overdue invoices
+     * Fetch and normalize bank transactions from Pohoda.
      *
-     * @param string $asOfDate Date to check overdue status (YYYY-MM-DD)
-     * @param array<string, mixed> $filters Additional filters
-     * @return array<int, array<string, mixed>> Overdue invoice records
+     * @param array<string, mixed> $filter Pohoda API filter
+     * @return array<array<string, mixed>>
      */
-    public function getOverdueInvoices(string $asOfDate, array $filters = []): array
+    private function fetchBankTransactions(array $filter): array
     {
-        // Get all unpaid invoices up to the specified date
-        $pohodaFilter = [
-            'dateTo' => $asOfDate,
-            'paid' => false,
-            'dueDate' => '<' . $asOfDate,  // Due date before as-of date
-        ];
-
         try {
-            $invoiceData = $this->invoiceClient->loadFromPohoda($pohodaFilter);
-            
-            if (!$invoiceData || !is_array($invoiceData)) {
+            $client = new Bank();
+            $raw    = $client->loadFromPohoda($filter);
+
+            if (!\is_array($raw)) {
                 return [];
             }
 
-            // Filter for truly overdue invoices and normalize
-            $overdueInvoices = array_filter($invoiceData, function ($invoice) use ($asOfDate) {
-                $dueDate = $invoice['dueDate'] ?? $invoice['dateDue'] ?? null;
-                return $dueDate && $dueDate < $asOfDate;
-            });
-
-            return $this->normalizeInvoiceData($overdueInvoices);
-            
+            return array_map($this->normalizeBank(...), $raw);
         } catch (\Exception $e) {
-            error_log("Pohoda overdue invoices fetch error: " . $e->getMessage());
+            error_log('Pohoda bank transactions fetch error: ' . $e->getMessage());
+
             return [];
         }
     }
 
     /**
-     * Get bank transactions for the specified period
+     * Fetch and normalize contacts from Pohoda.
      *
-     * @param string $dateFrom Start date (YYYY-MM-DD)
-     * @param string $dateTo End date (YYYY-MM-DD)
-     * @param array<string, mixed> $filters Additional filters
-     * @return array<int, array<string, mixed>> Bank transaction records
+     * @param array<string, mixed> $filter Pohoda API filter
+     * @return array<array<string, mixed>>
      */
-    public function getBankTransactions(string $dateFrom, string $dateTo, array $filters = []): array
+    private function fetchContacts(array $filter): array
     {
-        $pohodaFilter = [
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-        ];
-
-        if (isset($filters['account_ids'])) {
-            $pohodaFilter['accountIds'] = $filters['account_ids'];
-        }
-
         try {
-            $bankData = $this->bankClient->loadFromPohoda($pohodaFilter);
-            
-            if (!$bankData || !is_array($bankData)) {
+            $client = new \mServer\Addressbook();
+            $raw    = $client->loadFromPohoda($filter);
+
+            if (!\is_array($raw)) {
                 return [];
             }
 
-            return $this->normalizeBankData($bankData);
-            
-        } catch (\Exception $e) {
-            error_log("Pohoda bank transactions fetch error: " . $e->getMessage());
-            return [];
-        }
-    }
-
-    /**
-     * Test the connection to Pohoda
-     *
-     * @return bool True if connection is successful
-     */
-    public function testConnection(): bool
-    {
-        try {
-            // Try to create a simple client and test basic connection
-            $testClient = new UserList();
-            $result = $testClient->loadFromPohoda();
-            
-            // If we get any response (even empty), connection is working
-            return true;
-        } catch (\Exception $e) {
-            error_log("Pohoda connection test failed: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Normalize invoice data to standard format
-     *
-     * @param array<int, array<string, mixed>> $invoiceData Raw Pohoda invoice data
-     * @return array<int, array<string, mixed>> Normalized invoice data
-     */
-    private function normalizeInvoiceData(array $invoiceData): array
-    {
-        $normalized = [];
-
-        foreach ($invoiceData as $invoice) {
-            $normalized[] = [
-                'id' => $invoice['id'] ?? $invoice['number'] ?? uniqid(),
-                'number' => $invoice['number'] ?? $invoice['numberRequested'] ?? '',
-                'date' => $invoice['date'] ?? $invoice['dateAccounting'] ?? '',
-                'due_date' => $invoice['dateDue'] ?? $invoice['dueDate'] ?? '',
-                'amount' => $this->parseAmount($invoice['homeCurrency'] ?? $invoice['foreignCurrency'] ?? []),
-                'currency' => $this->parseCurrency($invoice['homeCurrency'] ?? $invoice['foreignCurrency'] ?? []),
-                'document_type' => $invoice['invoiceType'] ?? $invoice['documentType'] ?? 'INVOICE',
-                'partner_name' => $invoice['partnerIdentity']['address']['name'] ?? 
-                                $invoice['address']['name'] ?? 'Unknown',
-                'partner_ico' => $invoice['partnerIdentity']['address']['ico'] ?? 
-                                $invoice['address']['ico'] ?? '',
-                'state' => $invoice['state'] ?? 'active',
-                'raw_data' => $invoice, // Keep original for debugging
-            ];
-        }
-
-        return $normalized;
-    }
-
-    /**
-     * Normalize bank transaction data to standard format
-     *
-     * @param array<int, array<string, mixed>> $bankData Raw Pohoda bank data
-     * @return array<int, array<string, mixed>> Normalized bank data
-     */
-    private function normalizeBankData(array $bankData): array
-    {
-        $normalized = [];
-
-        foreach ($bankData as $transaction) {
-            $normalized[] = [
-                'id' => $transaction['id'] ?? uniqid(),
-                'date' => $transaction['date'] ?? $transaction['dateStatement'] ?? '',
-                'amount' => $this->parseAmount($transaction['homeCurrency'] ?? []),
-                'currency' => $this->parseCurrency($transaction['homeCurrency'] ?? []),
-                'description' => $transaction['text'] ?? $transaction['note'] ?? '',
-                'account' => $transaction['account'] ?? '',
-                'type' => $transaction['symVar'] ?? 'transfer',
-                'raw_data' => $transaction,
-            ];
-        }
-
-        return $normalized;
-    }
-
-    /**
-     * Parse amount from Pohoda currency structure
-     *
-     * @param array<string, mixed> $currencyData Pohoda currency data
-     * @return float Parsed amount
-     */
-    private function parseAmount(array $currencyData): float
-    {
-        if (isset($currencyData['priceNone'])) {
-            return (float) $currencyData['priceNone'];
-        }
-        if (isset($currencyData['price'])) {
-            return (float) $currencyData['price'];
-        }
-        if (isset($currencyData['amount'])) {
-            return (float) $currencyData['amount'];
-        }
-        
-        return 0.0;
-    }
-
-    /**
-     * Parse currency from Pohoda currency structure
-     *
-     * @param array<string, mixed> $currencyData Pohoda currency data
-     * @return string Currency code
-     */
-    private function parseCurrency(array $currencyData): string
-    {
-        return $currencyData['currency']['ids'] ??
-               $currencyData['currency'] ??
-               'CZK';
-    }
-
-    /**
-     * Get contacts (address book) from Pohoda
-     *
-     * @param array<string, mixed> $conditions Query conditions
-     * @return array<int, array<string, mixed>> Contact records
-     */
-    private function getContacts(array $conditions = []): array
-    {
-        try {
-            $addressBook = new \mServer\Addressbook();
-            $data = $addressBook->loadFromPohoda($conditions);
-
-            if (!$data || !is_array($data)) {
-                return [];
-            }
-
-            $normalized = [];
-
-            foreach ($data as $contact) {
-                $normalized[] = [
-                    'id' => $contact['id'] ?? uniqid(),
-                    'name' => $contact['identity']['address']['name'] ?? '',
-                    'ico' => $contact['identity']['address']['ico'] ?? '',
-                    'email' => $contact['identity']['address']['email'] ?? '',
-                    'phone' => $contact['identity']['address']['phone'] ?? '',
-                    'city' => $contact['identity']['address']['city'] ?? '',
-                    'raw_data' => $contact,
-                ];
-            }
-
-            return $normalized;
+            return array_map($this->normalizeContact(...), $raw);
         } catch (\Exception $e) {
             error_log('Pohoda contacts fetch error: ' . $e->getMessage());
 
@@ -470,40 +342,215 @@ class PohodaDataProvider implements DataProviderInterface
     }
 
     /**
-     * Get products (stock/price list) from Pohoda
+     * Fetch and normalize products from Pohoda.
      *
-     * @param array<string, mixed> $conditions Query conditions
-     * @return array<int, array<string, mixed>> Product records
+     * @param array<string, mixed> $filter Pohoda API filter
+     * @return array<array<string, mixed>>
      */
-    private function getProducts(array $conditions = []): array
+    private function fetchProducts(array $filter): array
     {
         try {
-            $stock = new \mServer\Stock();
-            $data = $stock->loadFromPohoda($conditions);
+            $client = new \mServer\Stock();
+            $raw    = $client->loadFromPohoda($filter);
 
-            if (!$data || !is_array($data)) {
+            if (!\is_array($raw)) {
                 return [];
             }
 
-            $normalized = [];
-
-            foreach ($data as $product) {
-                $normalized[] = [
-                    'id' => $product['id'] ?? uniqid(),
-                    'code' => $product['stockHeader']['code'] ?? '',
-                    'name' => $product['stockHeader']['name'] ?? '',
-                    'quantity' => (float) ($product['stockHeader']['count'] ?? 0),
-                    'buy_price' => (float) ($product['stockHeader']['purchasingPrice'] ?? 0),
-                    'sell_price' => (float) ($product['stockHeader']['sellingPrice'] ?? 0),
-                    'raw_data' => $product,
-                ];
-            }
-
-            return $normalized;
+            return array_map($this->normalizeProduct(...), $raw);
         } catch (\Exception $e) {
             error_log('Pohoda products fetch error: ' . $e->getMessage());
 
             return [];
         }
+    }
+
+    /**
+     * Normalize a raw Pohoda invoice record to neutral FIELD_* schema.
+     *
+     * @param array<string, mixed> $inv Raw Pohoda invoice
+     * @return array<string, mixed>
+     */
+    private function normalizeInvoice(array $inv, string $invoiceType): array
+    {
+        $homeCurrency    = $inv['homeCurrency'] ?? [];
+        $foreignCurrency = $inv['foreignCurrency'] ?? [];
+        $address         = $inv['partnerIdentity']['address'] ?? $inv['address'] ?? [];
+        $state           = strtolower((string) ($inv['state'] ?? 'active'));
+
+        $totalHome    = $this->parseAmount($homeCurrency);
+        $totalForeign = $this->parseAmount($foreignCurrency);
+        $remaining    = $this->parseRemainingAmount($inv);
+
+        $paymentStatus = $this->normalizePaymentStatus($inv);
+
+        return [
+            DataProviderInterface::FIELD_CODE                     => (string) ($inv['number'] ?? $inv['numberRequested'] ?? ''),
+            DataProviderInterface::FIELD_DATE                     => (string) ($inv['date'] ?? $inv['dateAccounting'] ?? ''),
+            DataProviderInterface::FIELD_DUE_DATE                 => (string) ($inv['dateDue'] ?? $inv['dueDate'] ?? ''),
+            DataProviderInterface::FIELD_COMPANY                  => (string) ($address['name'] ?? ''),
+            DataProviderInterface::FIELD_TOTAL_AMOUNT             => $totalHome,
+            DataProviderInterface::FIELD_TOTAL_AMOUNT_FOREIGN     => $totalForeign,
+            DataProviderInterface::FIELD_REMAINING_AMOUNT         => $remaining,
+            DataProviderInterface::FIELD_REMAINING_AMOUNT_FOREIGN => 0.0,
+            DataProviderInterface::FIELD_DEPOSIT_AMOUNT           => 0.0,
+            DataProviderInterface::FIELD_DEPOSIT_AMOUNT_FOREIGN   => 0.0,
+            DataProviderInterface::FIELD_CURRENCY                 => $this->parseCurrency($homeCurrency ?: $foreignCurrency),
+            DataProviderInterface::FIELD_CANCELLED                => $state === 'cancelled',
+            DataProviderInterface::FIELD_DOCUMENT_TYPE            => $this->normalizeDocumentType((string) ($inv['invoiceType'] ?? $inv['documentType'] ?? $invoiceType)),
+            DataProviderInterface::FIELD_PAYMENT_STATUS           => $paymentStatus,
+            DataProviderInterface::FIELD_MAIL_STATUS              => DataProviderInterface::MAIL_STATUS_EMPTY,
+            DataProviderInterface::FIELD_DESCRIPTION              => (string) ($inv['text'] ?? $inv['note'] ?? ''),
+            DataProviderInterface::FIELD_CONTACT_EMAIL            => (string) ($address['email'] ?? ''),
+            DataProviderInterface::FIELD_DEDUCTION_STATUS         => DataProviderInterface::DEDUCTION_STATUS_NONE,
+            DataProviderInterface::FIELD_FIRST_REMINDER_DATE      => '',
+            DataProviderInterface::FIELD_SECOND_REMINDER_DATE     => '',
+            DataProviderInterface::FIELD_PRE_LITIGATION_DATE      => '',
+            DataProviderInterface::FIELD_ITEMS                    => [],
+        ];
+    }
+
+    /**
+     * Normalize a raw Pohoda bank transaction to neutral FIELD_* schema.
+     *
+     * @param array<string, mixed> $tx Raw Pohoda bank transaction
+     * @return array<string, mixed>
+     */
+    private function normalizeBank(array $tx): array
+    {
+        $homeCurrency = $tx['homeCurrency'] ?? [];
+        $address      = $tx['partnerIdentity']['address'] ?? $tx['address'] ?? [];
+        $amount       = $this->parseAmount($homeCurrency);
+
+        return [
+            DataProviderInterface::FIELD_CODE                 => (string) ($tx['number'] ?? ''),
+            DataProviderInterface::FIELD_DATE                 => (string) ($tx['date'] ?? $tx['dateStatement'] ?? ''),
+            DataProviderInterface::FIELD_COMPANY              => (string) ($address['name'] ?? ''),
+            DataProviderInterface::FIELD_BANK_ACCOUNT         => (string) ($tx['account'] ?? ''),
+            DataProviderInterface::FIELD_TOTAL_AMOUNT         => abs($amount),
+            DataProviderInterface::FIELD_TOTAL_AMOUNT_FOREIGN => abs($this->parseAmount($tx['foreignCurrency'] ?? [])),
+            DataProviderInterface::FIELD_CURRENCY             => $this->parseCurrency($homeCurrency),
+            DataProviderInterface::FIELD_DIRECTION            => $amount >= 0
+                ? DataProviderInterface::DIRECTION_INCOMING
+                : DataProviderInterface::DIRECTION_OUTGOING,
+            DataProviderInterface::FIELD_CANCELLED            => false,
+            DataProviderInterface::FIELD_DESCRIPTION          => (string) ($tx['text'] ?? $tx['note'] ?? ''),
+            DataProviderInterface::FIELD_ACCOUNTED            => (bool) ($tx['accountingDocument'] ?? false),
+            DataProviderInterface::FIELD_MATCHED              => (bool) ($tx['paired'] ?? false),
+        ];
+    }
+
+    /**
+     * Normalize a raw Pohoda contact to neutral FIELD_* schema.
+     *
+     * @param array<string, mixed> $contact Raw Pohoda contact
+     * @return array<string, mixed>
+     */
+    private function normalizeContact(array $contact): array
+    {
+        $address = $contact['identity']['address'] ?? $contact['address'] ?? [];
+
+        return [
+            DataProviderInterface::FIELD_CODE   => (string) ($contact['id'] ?? ''),
+            DataProviderInterface::FIELD_NAME   => (string) ($address['name'] ?? ''),
+            DataProviderInterface::FIELD_EMAIL  => (string) ($address['email'] ?? ''),
+            DataProviderInterface::FIELD_PHONE  => (string) ($address['phone'] ?? $address['mobilPhone'] ?? ''),
+            DataProviderInterface::FIELD_STREET => (string) ($address['street'] ?? ''),
+            DataProviderInterface::FIELD_CITY   => (string) ($address['city'] ?? ''),
+        ];
+    }
+
+    /**
+     * Normalize a raw Pohoda stock item to neutral FIELD_* schema.
+     *
+     * @param array<string, mixed> $product Raw Pohoda stock item
+     * @return array<string, mixed>
+     */
+    private function normalizeProduct(array $product): array
+    {
+        $header = $product['stockHeader'] ?? $product;
+
+        return [
+            DataProviderInterface::FIELD_CODE       => (string) ($header['code'] ?? ''),
+            DataProviderInterface::FIELD_NAME       => (string) ($header['name'] ?? ''),
+            DataProviderInterface::FIELD_BUY_PRICE  => (float) ($header['purchasingPrice'] ?? 0),
+            DataProviderInterface::FIELD_SELL_PRICE => (float) ($header['sellingPrice'] ?? 0),
+        ];
+    }
+
+    /**
+     * Parse monetary amount from Pohoda currency structure.
+     *
+     * @param array<string, mixed> $currencyData
+     */
+    private function parseAmount(array $currencyData): float
+    {
+        return (float) ($currencyData['priceNone']
+            ?? $currencyData['price']
+            ?? $currencyData['amount']
+            ?? 0);
+    }
+
+    /**
+     * Calculate remaining (unpaid) amount from Pohoda invoice.
+     *
+     * @param array<string, mixed> $inv
+     */
+    private function parseRemainingAmount(array $inv): float
+    {
+        $total = $this->parseAmount($inv['homeCurrency'] ?? []);
+        $paid  = (float) ($inv['paidAmount'] ?? $inv['paid'] ?? 0);
+
+        return max(0.0, $total - $paid);
+    }
+
+    /**
+     * Parse currency code from Pohoda currency structure.
+     *
+     * @param array<string, mixed> $currencyData
+     */
+    private function parseCurrency(array $currencyData): string
+    {
+        $code = $currencyData['currency']['ids']
+            ?? $currencyData['currency']
+            ?? '';
+
+        return (is_string($code) && $code !== '') ? $code : 'CZK';
+    }
+
+    /**
+     * Derive neutral payment status from Pohoda invoice data.
+     *
+     * @param array<string, mixed> $inv
+     */
+    private function normalizePaymentStatus(array $inv): string
+    {
+        $total     = $this->parseAmount($inv['homeCurrency'] ?? []);
+        $paid      = (float) ($inv['paidAmount'] ?? $inv['paid'] ?? 0);
+        $remaining = max(0.0, $total - $paid);
+
+        if ($remaining <= 0.0) {
+            return DataProviderInterface::PAYMENT_STATUS_PAID;
+        }
+
+        if ($paid > 0.0) {
+            return DataProviderInterface::PAYMENT_STATUS_PARTIAL;
+        }
+
+        return DataProviderInterface::PAYMENT_STATUS_UNPAID;
+    }
+
+    /**
+     * Map Pohoda invoice type to neutral document type.
+     */
+    private function normalizeDocumentType(string $pohodaType): string
+    {
+        return match (strtolower($pohodaType)) {
+            'advanceinvoice', 'proforma', 'deposit' => DataProviderInterface::DOCUMENT_TYPE_PROFORMA,
+            'creditnote', 'credit', 'dobropis'      => DataProviderInterface::DOCUMENT_TYPE_CREDIT_NOTE,
+            'issuedinvoice', 'receivedinvoice',
+            'faktura', 'invoice'                    => DataProviderInterface::DOCUMENT_TYPE_INVOICE,
+            default                                 => $pohodaType,
+        };
     }
 }

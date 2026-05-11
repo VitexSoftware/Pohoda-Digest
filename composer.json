@@ -1,0 +1,45 @@
+{
+    "name": "vitexsoftware/pohoda-digest",
+    "description": "Periodical Pohoda digest — Markdown, HTML, PDF output.",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Vítězslav Dvořák",
+            "email": "info@vitexsoftware.cz"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=8.1",
+        "vitexsoftware/digest-modules": "dev-main",
+        "vitexsoftware/digest-renderer": "dev-main",
+        "vitexsoftware/pohoda-connector": "*",
+        "vitexsoftware/ease-core": "^1.49",
+        "symfony/mailer": "^6.4|^7.0",
+        "symfony/mime": "^6.4|^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10",
+        "phpstan/phpstan": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "VitexSoftware\\PohodaDigest\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Test\\VitexSoftware\\PohodaDigest\\": "tests/"
+        }
+    },
+    "repositories": [],
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "phpstan": "phpstan analyse src --level=8"
+    }
+}
