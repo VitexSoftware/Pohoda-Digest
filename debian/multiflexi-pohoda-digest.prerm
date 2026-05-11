@@ -5,9 +5,10 @@ set -e
 case "$1" in
     remove)
         APPLICATION=`echo $DPKG_MAINTSCRIPT_PACKAGE | sed 's/multiflexi-//'`
-        for file in `ls /usr/lib/$APPLICATION/multiflexi/*.json`
+        for file in /usr/lib/$APPLICATION/multiflexi/*.json
         do
-          multiflexi-json-app-remover $file
+          [ -e "$file" ] || break
+          multiflexi-cli application:remove-json --file "$file"
         done
     ;;
 

@@ -3,11 +3,9 @@ set -e
 
 case "$1" in
     configure)
-        # Setup composer autoloader
-        cd /usr/share/pohoda-digest
-        if [ -x /usr/bin/composer ]; then
-            composer install --no-dev --optimize-autoloader 2>/dev/null || true
-        fi
+        # Autoloader is now shipped in the .deb at:
+        # /usr/share/php/pohoda-digest/autoload.php
+        # No runtime composer operations needed
         
         # Create log directory
         mkdir -p /var/log/pohoda-digest

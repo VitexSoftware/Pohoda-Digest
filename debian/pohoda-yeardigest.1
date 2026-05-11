@@ -1,0 +1,50 @@
+.TH POHODA-YEARDIGEST 1 "May 2026" "pohoda-digest" "User Commands"
+.SH NAME
+pohoda-yeardigest \- generate yearly Pohoda accounting digest
+.SH SYNOPSIS
+.B pohoda-yeardigest
+[\fIENVFILE\fR]
+.SH DESCRIPTION
+Generates a yearly digest report from Pohoda accounting data covering last year.
+Output format is controlled by the OUTPUT_FORMAT environment variable (md, html, pdf).
+Results can be saved to file (DIGEST_SAVETO) and/or emailed (DIGEST_MAILTO).
+.SH OPTIONS
+.TP
+.I ENVFILE
+Optional path to .env configuration file (default: .env in project root).
+.SH ENVIRONMENT
+.TP
+.B POHODA_URL
+Pohoda mServer URL.
+.TP
+.B POHODA_USERNAME
+mServer username.
+.TP
+.B POHODA_PASSWORD
+mServer password.
+.TP
+.B POHODA_ICO
+Company identification number.
+.TP
+.B OUTPUT_FORMAT
+Output format: md (Markdown), html, pdf (default: html).
+.TP
+.B DIGEST_SAVETO
+Path to save the generated digest file.
+.TP
+.B DIGEST_MAILTO
+Email address to send the digest to.
+.TP
+.B MAIL_DSN
+Symfony Mailer DSN for email transport.
+.TP
+.B THEME
+CSS theme for HTML/PDF output (default: bootstrap).
+.SH SEE ALSO
+.BR pohoda-daydigest (1),
+.BR pohoda-weekdigest (1),
+.BR pohoda-monthdigest (1),
+.BR pohoda-yeardigest (1),
+.BR pohoda-alltimedigest (1)
+.SH AUTHOR
+Vítězslav Dvořák <info@vitexsoftware.cz>

@@ -1,3 +1,20 @@
-#!/bin/bash
-# All-time digest - use a very early start date and today as end
-php -f /usr/share/pohoda-digest/bin/pohoda-digest.php -- --start="2000-01-01" --end="$(date '+%Y-%m-%d')"
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+namespace VitexSoftware\PohodaDigest;
+
+\define('EASE_APPNAME', 'Pohoda 🌌 All Time Digest');
+
+require_once __DIR__ . '/init.php';
+
+$start = new \DateTime('-10 years');
+$end = new \DateTime();
+$period = new \DatePeriod($start, new \DateInterval('P1D'), $end);
+
+$subject = sprintf(_('Pohoda 🌌 Alltime digest'));
+
+$digestor = new PohodaDigestor($subject);
+$digestor->registerModules('alltime');
+$digestor->run($period);

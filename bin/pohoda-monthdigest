@@ -1,6 +1,20 @@
-#!/bin/bash
-# Calculate first and last day of current month
-month_start=$(date '+%Y-%m-01')
-month_end=$(date -d "$(date '+%Y-%m-01') +1 month -1 day" '+%Y-%m-%d')
+#!/usr/bin/env php
+<?php
 
-php -f /usr/share/pohoda-digest/bin/pohoda-digest.php -- --start="$month_start" --end="$month_end"
+declare(strict_types=1);
+
+namespace VitexSoftware\PohodaDigest;
+
+\define('EASE_APPNAME', 'Pohoda 🌜 Monthly Digest');
+
+require_once __DIR__ . '/init.php';
+
+$start = new \DateTime('-1 month');
+$end = new \DateTime();
+$period = new \DatePeriod($start, new \DateInterval('P1D'), $end);
+
+$subject = sprintf(_('Pohoda 🌜 Monthly digest'));
+
+$digestor = new PohodaDigestor($subject);
+$digestor->registerModules('monthly');
+$digestor->run($period);
