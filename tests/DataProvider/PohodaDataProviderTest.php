@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 /**
- * This file is part of the Pohoda-Digest package
+ * This file is part of the AbraFlexi-Digest package
  *
- * https://github.com/VitexSoftware/Pohoda-Digest
+ * https://github.com/VitexSoftware/Pohoda-Digest/
  *
- * (c) VitexSoftware. <https://vitexsoftware.com/>
+ * (c) Vítězslav Dvořák <http://vitexsoftware.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -32,19 +32,11 @@ class PohodaDataProviderTest extends TestCase
     protected function setUp(): void
     {
         $this->provider = new PohodaDataProvider([
-            'url'      => 'http://localhost',
+            'url' => 'http://localhost',
             'username' => 'test',
             'password' => 'test',
-            'ico'      => '12345678',
+            'ico' => '12345678',
         ]);
-    }
-
-    private function callPrivate(string $method, mixed ...$args): mixed
-    {
-        $ref = new \ReflectionMethod(PohodaDataProvider::class, $method);
-        $ref->setAccessible(true);
-
-        return $ref->invoke($this->provider, ...$args);
     }
 
     // ── Public interface ─────────────────────────────────────────────────────
@@ -90,13 +82,13 @@ class PohodaDataProviderTest extends TestCase
     public function testNormalizeInvoiceFieldKeys(): void
     {
         $raw = [
-            'number'      => 'FAK2024001',
-            'date'        => '2024-01-15',
-            'dateDue'     => '2024-02-15',
+            'number' => 'FAK2024001',
+            'date' => '2024-01-15',
+            'dateDue' => '2024-02-15',
             'homeCurrency' => ['priceNone' => 12000.0],
             'partnerIdentity' => ['address' => ['name' => 'Test s.r.o.', 'email' => 'test@example.com']],
             'invoiceType' => 'issuedInvoice',
-            'state'       => 'active',
+            'state' => 'active',
         ];
 
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
@@ -113,7 +105,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeInvoiceCancelledState(): void
     {
-        $raw    = ['state' => 'cancelled', 'homeCurrency' => []];
+        $raw = ['state' => 'cancelled', 'homeCurrency' => []];
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
 
         $this->assertTrue($result[DataProviderInterface::FIELD_CANCELLED]);
@@ -121,7 +113,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeInvoicePaymentStatusPaid(): void
     {
-        $raw    = ['homeCurrency' => ['priceNone' => 1000.0], 'paidAmount' => 1000.0];
+        $raw = ['homeCurrency' => ['priceNone' => 1000.0], 'paidAmount' => 1000.0];
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
 
         $this->assertSame(DataProviderInterface::PAYMENT_STATUS_PAID, $result[DataProviderInterface::FIELD_PAYMENT_STATUS]);
@@ -129,7 +121,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeInvoicePaymentStatusPartial(): void
     {
-        $raw    = ['homeCurrency' => ['priceNone' => 1000.0], 'paidAmount' => 400.0];
+        $raw = ['homeCurrency' => ['priceNone' => 1000.0], 'paidAmount' => 400.0];
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
 
         $this->assertSame(DataProviderInterface::PAYMENT_STATUS_PARTIAL, $result[DataProviderInterface::FIELD_PAYMENT_STATUS]);
@@ -137,7 +129,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeInvoicePaymentStatusUnpaid(): void
     {
-        $raw    = ['homeCurrency' => ['priceNone' => 1000.0]];
+        $raw = ['homeCurrency' => ['priceNone' => 1000.0]];
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
 
         $this->assertSame(DataProviderInterface::PAYMENT_STATUS_UNPAID, $result[DataProviderInterface::FIELD_PAYMENT_STATUS]);
@@ -147,7 +139,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeBankIncoming(): void
     {
-        $raw    = ['homeCurrency' => ['priceNone' => 5000.0], 'date' => '2024-01-10'];
+        $raw = ['homeCurrency' => ['priceNone' => 5000.0], 'date' => '2024-01-10'];
         $result = $this->callPrivate('normalizeBank', $raw);
 
         $this->assertSame(5000.0, $result[DataProviderInterface::FIELD_TOTAL_AMOUNT]);
@@ -156,7 +148,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeBankOutgoing(): void
     {
-        $raw    = ['homeCurrency' => ['priceNone' => -3000.0], 'date' => '2024-01-10'];
+        $raw = ['homeCurrency' => ['priceNone' => -3000.0], 'date' => '2024-01-10'];
         $result = $this->callPrivate('normalizeBank', $raw);
 
         $this->assertSame(3000.0, $result[DataProviderInterface::FIELD_TOTAL_AMOUNT]);
@@ -167,13 +159,13 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeContact(): void
     {
-        $raw    = [
-            'id'       => 'C001',
+        $raw = [
+            'id' => 'C001',
             'identity' => ['address' => [
-                'name'   => 'ACME Corp',
-                'email'  => 'acme@example.com',
-                'phone'  => '+420123456789',
-                'city'   => 'Praha',
+                'name' => 'ACME Corp',
+                'email' => 'acme@example.com',
+                'phone' => '+420123456789',
+                'city' => 'Praha',
                 'street' => 'Václavské náměstí 1',
             ]],
         ];
@@ -189,7 +181,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeProduct(): void
     {
-        $raw    = ['stockHeader' => ['code' => 'P001', 'name' => 'Widget', 'purchasingPrice' => 50.0, 'sellingPrice' => 100.0]];
+        $raw = ['stockHeader' => ['code' => 'P001', 'name' => 'Widget', 'purchasingPrice' => 50.0, 'sellingPrice' => 100.0]];
         $result = $this->callPrivate('normalizeProduct', $raw);
 
         $this->assertSame('P001', $result[DataProviderInterface::FIELD_CODE]);
@@ -267,7 +259,7 @@ class PohodaDataProviderTest extends TestCase
         $this->assertCount(1, $postFilters);
 
         $pastDue = [DataProviderInterface::FIELD_DUE_DATE => '2020-01-01'];
-        $future  = [DataProviderInterface::FIELD_DUE_DATE => '2099-12-31'];
+        $future = [DataProviderInterface::FIELD_DUE_DATE => '2099-12-31'];
 
         $this->assertTrue($postFilters[0]($pastDue));
         $this->assertFalse($postFilters[0]($future));
@@ -281,7 +273,7 @@ class PohodaDataProviderTest extends TestCase
 
         $this->assertCount(1, $postFilters);
 
-        $active    = [DataProviderInterface::FIELD_CANCELLED => false];
+        $active = [DataProviderInterface::FIELD_CANCELLED => false];
         $cancelled = [DataProviderInterface::FIELD_CANCELLED => true];
 
         $this->assertTrue($postFilters[0]($active));
@@ -312,5 +304,13 @@ class PohodaDataProviderTest extends TestCase
 
         $this->assertTrue($fn([DataProviderInterface::FIELD_DIRECTION => DataProviderInterface::DIRECTION_INCOMING]));
         $this->assertFalse($fn([DataProviderInterface::FIELD_DIRECTION => DataProviderInterface::DIRECTION_OUTGOING]));
+    }
+
+    private function callPrivate(string $method, mixed ...$args): mixed
+    {
+        $ref = new \ReflectionMethod(PohodaDataProvider::class, $method);
+        $ref->setAccessible(true);
+
+        return $ref->invoke($this->provider, ...$args);
     }
 }

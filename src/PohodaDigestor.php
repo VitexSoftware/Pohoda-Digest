@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 /**
- * This file is part of the Pohoda-Digest package
+ * This file is part of the AbraFlexi-Digest package
  *
- * https://github.com/VitexSoftware/Pohoda-Digest
+ * https://github.com/VitexSoftware/Pohoda-Digest/
  *
- * (c) VitexSoftware. <https://vitexsoftware.com/>
+ * (c) Vítězslav Dvořák <http://vitexsoftware.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -32,7 +32,9 @@ use VitexSoftware\PohodaDigest\DataProvider\PohodaDataProvider;
  */
 class PohodaDigestor
 {
-    /** @var array<string, string> Universal modules (all periods) */
+    /**
+     * @var array<string, string> Universal modules (all periods)
+     */
     private const UNIVERSAL_MODULES = [
         'debtors' => Modules\Debtors::class,
         'outcoming_invoices' => Modules\OutcomingInvoices::class,
@@ -51,7 +53,9 @@ class PohodaDigestor
         'outcoming_invoices_hidden' => Modules\OutcomingInvoicesHiddenToCustomer::class,
     ];
 
-    /** @var array<string, array<string, string>> Period-specific modules */
+    /**
+     * @var array<string, array<string, string>> Period-specific modules
+     */
     private const PERIOD_MODULES = [
         'daily' => [],
         'weekly' => [
@@ -65,13 +69,12 @@ class PohodaDigestor
             'purchase_price_lower_than_sales' => Modules\AllTime\PurchasePriceLowerThanSales::class,
         ],
     ];
-
     private string $subject;
     private ModuleRunner $moduleRunner;
     private DigestRenderer $renderer;
 
     /**
-     * @param string               $subject     Digest title
+     * @param string               $subject      Digest title
      * @param array<string, mixed> $pohodaConfig Pohoda connection config
      */
     public function __construct(string $subject, array $pohodaConfig = [])
@@ -114,7 +117,7 @@ class PohodaDigestor
      * Generate digest output.
      *
      * @param \DatePeriod $period Time period
-     * @param string|null $format Output format (null = read OUTPUT_FORMAT env, fallback 'html')
+     * @param null|string $format Output format (null = read OUTPUT_FORMAT env, fallback 'html')
      *
      * @return string Rendered output
      */
@@ -152,7 +155,7 @@ class PohodaDigestor
                 default => '.html',
             };
 
-            $filename = str_ends_with($saveTo, $ext) ? $saveTo : $saveTo . $ext;
+            $filename = str_ends_with($saveTo, $ext) ? $saveTo : $saveTo.$ext;
             file_put_contents($filename, $output);
             \Ease\Shared::logger()->addToLog(sprintf(_('Saved to %s'), $filename), 'success');
         }

@@ -4,7 +4,7 @@
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
   <name>pohoda-digest</name>
-  <summary>Analytics and reporting tool for Money S3/Pohoda accounting</summary>
+  <summary>Analytics and reporting tool for Pohoda accounting</summary>
   <description>
     <p>
       Pohoda-Digest is a comprehensive analytics and reporting tool for Money S3 and Pohoda accounting systems. It generates detailed financial reports, monitors business metrics, and provides insights through various modules. Features: * Integration with Money S3/Pohoda via mServer * Modular analytics system * HTML reports with multiple themes * Command-line interface for automation * Cron-ready for scheduled reporting * Outcoming invoices analysis * Customer debt monitoring Install or update MultiFlexi app JSON definitions for Pohoda-Digest analytics tools into MultiFlexi environment. This package provides MultiFlexi integration for all Pohoda-Digest time periods including daily, weekly, monthly, yearly and all-time digests. * Customizable report generation

@@ -2,7 +2,7 @@ Source: pohoda-digest
 Section: web
 Priority: optional
 Maintainer: Vítězslav Dvořák <info@vitexsoftware.cz>
-Build-Depends: debhelper-compat (= 13), jq, moreutils
+Build-Depends: debhelper-compat (= 13), jq, moreutils, pkg-php-tools
 Standards-Version: 4.1.2
 Homepage: https://github.com/VitexSoftware/Pohoda-Digest
 

@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 /**
- * This file is part of the Pohoda-Digest package
+ * This file is part of the AbraFlexi-Digest package
  *
- * https://github.com/VitexSoftware/Pohoda-Digest
+ * https://github.com/VitexSoftware/Pohoda-Digest/
  *
- * (c) VitexSoftware. <https://vitexsoftware.com/>
+ * (c) Vítězslav Dvořák <http://vitexsoftware.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -37,10 +37,11 @@ class Mailer extends Sand
     public bool $notify = true;
     public ?bool $sendResult = false;
 
-    /** @var array<string, string> */
+    /**
+     * @var array<string, string>
+     */
     public array $mailHeaders = [];
     public bool $finalized = false;
-
     private string $htmlContent = '';
     private Email $email;
     private SymfonyMailer $mailer;
@@ -53,7 +54,7 @@ class Mailer extends Sand
     {
         $this->fromEmailAddress = \Ease\Shared::cfg(
             'DIGEST_FROM',
-            \Ease\Shared::cfg('MAIL_FROM', 'digest@' . gethostname()),
+            \Ease\Shared::cfg('MAIL_FROM', 'digest@'.gethostname()),
         );
 
         $this->setMailHeaders([
