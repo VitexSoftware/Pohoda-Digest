@@ -82,11 +82,11 @@ class PohodaDataProviderTest extends TestCase
     public function testNormalizeInvoiceFieldKeys(): void
     {
         $raw = [
-            'number' => 'FAK2024001',
+            'symVar' => 'FAK2024001',
             'date' => '2024-01-15',
             'dateDue' => '2024-02-15',
-            'homeCurrency' => ['priceNone' => 12000.0],
-            'partnerIdentity' => ['address' => ['name' => 'Test s.r.o.', 'email' => 'test@example.com']],
+            'homeCurrency' => ['priceHighSum' => 12000.0],
+            'partnerIdentity' => ['address' => ['company' => 'Test s.r.o.', 'email' => 'test@example.com']],
             'invoiceType' => 'issuedInvoice',
             'state' => 'active',
         ];
@@ -97,6 +97,7 @@ class PohodaDataProviderTest extends TestCase
         $this->assertSame('2024-01-15', $result[DataProviderInterface::FIELD_DATE]);
         $this->assertSame('2024-02-15', $result[DataProviderInterface::FIELD_DUE_DATE]);
         $this->assertSame('Test s.r.o.', $result[DataProviderInterface::FIELD_COMPANY]);
+        $this->assertSame(12000.0, $result[DataProviderInterface::FIELD_TOTAL_AMOUNT]);
         $this->assertSame(12000.0, $result[DataProviderInterface::FIELD_TOTAL_AMOUNT]);
         $this->assertSame('test@example.com', $result[DataProviderInterface::FIELD_CONTACT_EMAIL]);
         $this->assertFalse($result[DataProviderInterface::FIELD_CANCELLED]);
@@ -113,7 +114,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeInvoicePaymentStatusPaid(): void
     {
-        $raw = ['homeCurrency' => ['priceNone' => 1000.0], 'paidAmount' => 1000.0];
+        $raw = ['homeCurrency' => ['priceHighSum' => 1000.0], 'liquidation' => ['amountHome' => 1000.0]];
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
 
         $this->assertSame(DataProviderInterface::PAYMENT_STATUS_PAID, $result[DataProviderInterface::FIELD_PAYMENT_STATUS]);
@@ -121,7 +122,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeInvoicePaymentStatusPartial(): void
     {
-        $raw = ['homeCurrency' => ['priceNone' => 1000.0], 'paidAmount' => 400.0];
+        $raw = ['homeCurrency' => ['priceHighSum' => 1000.0], 'liquidation' => ['amountHome' => 400.0]];
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
 
         $this->assertSame(DataProviderInterface::PAYMENT_STATUS_PARTIAL, $result[DataProviderInterface::FIELD_PAYMENT_STATUS]);
@@ -129,7 +130,7 @@ class PohodaDataProviderTest extends TestCase
 
     public function testNormalizeInvoicePaymentStatusUnpaid(): void
     {
-        $raw = ['homeCurrency' => ['priceNone' => 1000.0]];
+        $raw = ['homeCurrency' => ['priceHighSum' => 1000.0]];
         $result = $this->callPrivate('normalizeInvoice', $raw, 'issuedInvoice');
 
         $this->assertSame(DataProviderInterface::PAYMENT_STATUS_UNPAID, $result[DataProviderInterface::FIELD_PAYMENT_STATUS]);
@@ -246,7 +247,7 @@ class PohodaDataProviderTest extends TestCase
         ]);
 
         $this->assertSame('2024-01-01', $filter['dateFrom']);
-        $this->assertSame('2024-02-01', $filter['dateTo']);
+        $this->assertSame('2024-02-01', $filter['dateTill']);
         $this->assertCount(0, $postFilters);
     }
 

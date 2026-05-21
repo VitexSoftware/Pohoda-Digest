@@ -29,7 +29,6 @@
             "Test\\VitexSoftware\\PohodaDigest\\": "tests/"
         }
     },
-    "repositories": [],
     "config": {
         "optimize-autoloader": true,
         "sort-packages": true

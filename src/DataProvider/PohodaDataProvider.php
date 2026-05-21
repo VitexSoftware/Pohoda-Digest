@@ -113,7 +113,7 @@ class PohodaDataProvider implements DataProviderInterface
     {
         return \in_array($feature, [
             'date_filtering', 'payment_status', 'document_types',
-            'multi_currency', 'overdue_tracking',
+            'multi_currency', 'overdue_tracking', 'relations',
         ], true);
     }
 
@@ -146,7 +146,7 @@ class PohodaDataProvider implements DataProviderInterface
         $start = $this->formatDate($period->getStartDate());
         $end = $this->formatDate($period->getEndDate());
 
-        return "dateFrom={$start}&dateTo={$end}";
+        return "dateFrom={$start}&dateTill={$end}";
     }
 
     // ── Private helpers ────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ class PohodaDataProvider implements DataProviderInterface
                 case DataProviderInterface::FILTER_DATE_PERIOD:
                     if (\is_array($value) && isset($value['period']) && $value['period'] instanceof \DatePeriod) {
                         $filter['dateFrom'] = $this->formatDate($value['period']->getStartDate());
-                        $filter['dateTo'] = $this->formatDate($value['period']->getEndDate());
+                        $filter['dateTill'] = $this->formatDate($value['period']->getEndDate());
                     }
 
                     break;
@@ -239,6 +239,9 @@ class PohodaDataProvider implements DataProviderInterface
                     $postFilters[] = static fn (array $r): bool => ($r[DataProviderInterface::FIELD_DOCUMENT_TYPE] ?? '') === $want;
 
                     break;
+                case DataProviderInterface::FILTER_WITH_ITEMS:
+                    // Pohoda always includes invoice items — no server-side flag needed
+                    break;
                 case DataProviderInterface::FILTER_LIMIT:
                     // Handled after post-filtering in getData()
                     break;
@@ -260,7 +263,7 @@ class PohodaDataProvider implements DataProviderInterface
     {
         try {
             $client = new Invoice();
-            $raw = $client->loadFromPohoda($filter);
+            $raw = $client->getColumnsFromPohoda(['*'], $filter);
 
             if (!\is_array($raw)) {
                 return [];
@@ -268,7 +271,7 @@ class PohodaDataProvider implements DataProviderInterface
 
             return array_map(
                 static fn (array $inv) => self::normalizeInvoice($inv, $invoiceType),
-                $raw,
+                array_values($raw),
             );
         } catch (\Exception $e) {
             error_log('Pohoda invoice fetch error: '.$e->getMessage());
@@ -288,13 +291,13 @@ class PohodaDataProvider implements DataProviderInterface
     {
         try {
             $client = new Bank();
-            $raw = $client->loadFromPohoda($filter);
+            $raw = $client->getColumnsFromPohoda(['*'], $filter);
 
             if (!\is_array($raw)) {
                 return [];
             }
 
-            return array_map(self::normalizeBank(...), $raw);
+            return array_map(self::normalizeBank(...), array_values($raw));
         } catch (\Exception $e) {
             error_log('Pohoda bank transactions fetch error: '.$e->getMessage());
 
@@ -313,13 +316,13 @@ class PohodaDataProvider implements DataProviderInterface
     {
         try {
             $client = new \mServer\Addressbook();
-            $raw = $client->loadFromPohoda($filter);
+            $raw = $client->getColumnsFromPohoda(['*'], $filter);
 
             if (!\is_array($raw)) {
                 return [];
             }
 
-            return array_map(self::normalizeContact(...), $raw);
+            return array_map(self::normalizeContact(...), array_values($raw));
         } catch (\Exception $e) {
             error_log('Pohoda contacts fetch error: '.$e->getMessage());
 
@@ -338,18 +341,56 @@ class PohodaDataProvider implements DataProviderInterface
     {
         try {
             $client = new \mServer\Stock();
-            $raw = $client->loadFromPohoda($filter);
+            $raw = $client->getColumnsFromPohoda(['*'], $filter);
 
             if (!\is_array($raw)) {
                 return [];
             }
 
-            return array_map(self::normalizeProduct(...), $raw);
+            return array_map(self::normalizeProduct(...), array_values($raw));
         } catch (\Exception $e) {
             error_log('Pohoda products fetch error: '.$e->getMessage());
 
             return [];
         }
+    }
+
+    /**
+     * Normalize Pohoda invoiceDetail items to neutral item schema.
+     *
+     * @param array<mixed> $detail Raw invoiceDetail array
+     *
+     * @return array<array<string, mixed>>
+     */
+    private static function normalizeInvoiceItems(array $detail): array
+    {
+        $items = [];
+
+        foreach ($detail as $raw) {
+            if (!\is_array($raw)) {
+                continue;
+            }
+
+            // After processListInvoice typ: stripping: stockItem > stockItem > ids
+            $stockRef = $raw['stockItem']['stockItem'] ?? $raw['stockItem'] ?? [];
+            $productCode = $stockRef['ids'] ?? $stockRef['id'] ?? $raw['code'] ?? '';
+            $homeCurrency = $raw['homeCurrency'] ?? [];
+            $unitPrice = (float) ($homeCurrency['unitPrice'] ?? $homeCurrency['price'] ?? 0);
+            $priceSum = (float) ($homeCurrency['priceSum'] ?? 0);
+            $qty = (float) ($raw['quantity'] ?? 1);
+            $itemType = $productCode !== '' ? DataProviderInterface::ITEM_TYPE_CATALOG : DataProviderInterface::ITEM_TYPE_TEXT;
+
+            $items[] = [
+                'item_type' => $itemType,
+                'product_code' => (string) $productCode,
+                'name' => (string) ($raw['text'] ?? ''),
+                'quantity' => $qty,
+                'amount' => $priceSum ?: $unitPrice * $qty,
+                'unit_price' => $unitPrice,
+            ];
+        }
+
+        return $items;
     }
 
     /**
@@ -363,6 +404,7 @@ class PohodaDataProvider implements DataProviderInterface
     {
         $homeCurrency = $inv['homeCurrency'] ?? [];
         $foreignCurrency = $inv['foreignCurrency'] ?? [];
+        // partnerIdentity > address after typ: stripping
         $address = $inv['partnerIdentity']['address'] ?? $inv['address'] ?? [];
         $state = strtolower((string) ($inv['state'] ?? 'active'));
 
@@ -373,10 +415,10 @@ class PohodaDataProvider implements DataProviderInterface
         $paymentStatus = self::normalizePaymentStatus($inv);
 
         return [
-            DataProviderInterface::FIELD_CODE => (string) ($inv['number'] ?? $inv['numberRequested'] ?? ''),
+            DataProviderInterface::FIELD_CODE => (string) ($inv['symVar'] ?? $inv['number']['numberRequested'] ?? $inv['numberRequested'] ?? ''),
             DataProviderInterface::FIELD_DATE => (string) ($inv['date'] ?? $inv['dateAccounting'] ?? ''),
             DataProviderInterface::FIELD_DUE_DATE => (string) ($inv['dateDue'] ?? $inv['dueDate'] ?? ''),
-            DataProviderInterface::FIELD_COMPANY => (string) ($address['name'] ?? ''),
+            DataProviderInterface::FIELD_COMPANY => (string) ($address['company'] ?? $address['name'] ?? ''),
             DataProviderInterface::FIELD_TOTAL_AMOUNT => $totalHome,
             DataProviderInterface::FIELD_TOTAL_AMOUNT_FOREIGN => $totalForeign,
             DataProviderInterface::FIELD_REMAINING_AMOUNT => $remaining,
@@ -394,7 +436,7 @@ class PohodaDataProvider implements DataProviderInterface
             DataProviderInterface::FIELD_FIRST_REMINDER_DATE => '',
             DataProviderInterface::FIELD_SECOND_REMINDER_DATE => '',
             DataProviderInterface::FIELD_PRE_LITIGATION_DATE => '',
-            DataProviderInterface::FIELD_ITEMS => [],
+            DataProviderInterface::FIELD_ITEMS => self::normalizeInvoiceItems($inv['invoiceDetail'] ?? []),
         ];
     }
 
@@ -476,7 +518,9 @@ class PohodaDataProvider implements DataProviderInterface
      */
     private static function parseAmount(array $currencyData): float
     {
-        return (float) ($currencyData['priceNone']
+        // priceHighSum = total incl. VAT (preferred); priceNone = excl. VAT fallback
+        return (float) ($currencyData['priceHighSum']
+            ?? $currencyData['priceNone']
             ?? $currencyData['price']
             ?? $currencyData['amount']
             ?? 0);
@@ -490,7 +534,11 @@ class PohodaDataProvider implements DataProviderInterface
     private static function parseRemainingAmount(array $inv): float
     {
         $total = self::parseAmount($inv['homeCurrency'] ?? []);
-        $paid = (float) ($inv['paidAmount'] ?? $inv['paid'] ?? 0);
+        // processListInvoice exposes liquidation.amountHome; legacy fallback to paidAmount/paid
+        $paid = (float) ($inv['liquidation']['amountHome']
+            ?? $inv['paidAmount']
+            ?? $inv['paid']
+            ?? 0);
 
         return max(0.0, $total - $paid);
     }
@@ -517,7 +565,10 @@ class PohodaDataProvider implements DataProviderInterface
     private static function normalizePaymentStatus(array $inv): string
     {
         $total = self::parseAmount($inv['homeCurrency'] ?? []);
-        $paid = (float) ($inv['paidAmount'] ?? $inv['paid'] ?? 0);
+        $paid = (float) ($inv['liquidation']['amountHome']
+            ?? $inv['paidAmount']
+            ?? $inv['paid']
+            ?? 0);
         $remaining = max(0.0, $total - $paid);
 
         if ($remaining <= 0.0) {
