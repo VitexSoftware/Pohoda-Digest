@@ -1,5 +1,7 @@
 # Pohoda-Digest
 
+![Pohoda-Digest](pohoda-digest.svg)
+
 Periodical business digest for [Stormware Pohoda](https://www.stormware.cz/pohoda/) accounting system. Collects data via the [PHP-Pohoda-Connector](https://github.com/Spoje-NET/php-pohoda-connector) (mServer), runs analytics modules from [vitexsoftware/digest-modules](https://github.com/VitexSoftware/DigestModules), and outputs Markdown, HTML, or PDF reports.
 
 ## Architecture
