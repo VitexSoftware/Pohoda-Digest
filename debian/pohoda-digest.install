@@ -1,0 +1,9 @@
+composer.json    		usr/share/php/pohoda-digest/
+debian/autoload.php 		usr/share/php/pohoda-digest/
+
+#debian/conf/pohoda-digest.conf /etc/apache2/conf-available/
+src/*.php		        usr/share/pohoda-digest/
+src/DataProvider/*              usr/lib/pohoda-digest/DataProvider/
+bin/*                           usr/bin/
+pohoda-digest.svg               usr/share/icons/hicolor/scalable/apps/
+debian/io.github.vitexsoftware.pohoda_digest.metainfo.xml	usr/share/metainfo/
