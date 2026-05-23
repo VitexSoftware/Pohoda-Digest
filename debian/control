@@ -33,7 +33,7 @@ Description: Analytics and reporting tool for Money S3/Pohoda accounting
   * Customer debt monitoring
 
 Package: multiflexi-pohoda-digest
-Depends: multiflexi, pohoda-digest
+Depends: multiflexi-cli, pohoda-digest
 Architecture: all
 Section: web
 Priority: optional
