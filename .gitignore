@@ -43,3 +43,13 @@ phpunit.xml
 output/
 reports/
 /nbproject/private/
+
+
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/multiflexi-pohoda-digest.substvars
+debian/multiflexi-pohoda-digest/
+debian/pohoda-digest.substvars
+debian/pohoda-digest/
+nbproject/
