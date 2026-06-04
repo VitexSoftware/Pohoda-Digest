@@ -7,13 +7,12 @@
     "cs": "Pohoda Denní Digest"
   },
   "description": {
-    "en": "Daily analytics digest for Pohoda/Money S3 accounting system",
-    "cs": "Denní analytický digest pro účetní systém Pohoda/Money S3"
+    "en": "Daily analytics digest for Pohoda accounting system",
+    "cs": "Denní analytický digest pro účetní systém Pohoda"
   },
   "version": "1.0.0",
   "tags": [
     "Pohoda",
-    "Money S3",
     "Digest",
     "Analytics",
     "Daily",

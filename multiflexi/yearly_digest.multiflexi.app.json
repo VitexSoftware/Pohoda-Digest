@@ -1,19 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
   "schemaVersion": "3.2.1",
-  "uuid": "e4g7f9g1-4598-7c68-dfe9-59e70f8437i6",
+  "uuid": "fdb9063e-3d4a-486b-b173-d905bc779d3a",
   "name": {
     "en": "Pohoda Yearly Digest",
     "cs": "Pohoda Roční Digest"
   },
   "description": {
-    "en": "Yearly analytics digest for Pohoda/Money S3 accounting system",
-    "cs": "Roční analytický digest pro účetní systém Pohoda/Money S3"
+    "en": "Yearly analytics digest for Pohoda accounting system",
+    "cs": "Roční analytický digest pro účetní systém Pohoda"
   },
   "version": "1.0.0",
   "tags": [
     "Pohoda",
-    "Money S3",
     "Digest",
     "Analytics",
     "Yearly",

@@ -1,19 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
   "schemaVersion": "3.2.1",
-  "uuid": "f5h8g0h2-5699-8d79-efa0-60f81g9548j7",
+  "uuid": "1deb82ca-5593-4bc8-aee7-1c463b478662",
   "name": {
     "en": "Pohoda All-Time Digest",
     "cs": "Pohoda Celkový Digest"
   },
   "description": {
-    "en": "All-time analytics digest for Pohoda/Money S3 accounting system",
-    "cs": "Celkový analytický digest pro účetní systém Pohoda/Money S3"
+    "en": "All-time analytics digest for Pohoda accounting system",
+    "cs": "Celkový analytický digest pro účetní systém Pohoda"
   },
   "version": "1.0.0",
   "tags": [
     "Pohoda",
-    "Money S3",
     "Digest",
     "Analytics",
     "All-time",
