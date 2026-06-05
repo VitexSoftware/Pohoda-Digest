@@ -18,7 +18,7 @@
     "Monthly",
     "Accounting"
   ],
-  "homepage": "https://github.com/VitexSoftware/Pohoda-Digest/",
+  "homepage": "https://multiflexi.eu/doc/",
   "repository": "https://github.com/VitexSoftware/Pohoda-Digest",
   "image": "",
   "executable": "/usr/bin/pohoda-monthdigest",
