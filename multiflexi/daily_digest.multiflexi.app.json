@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
-  "schemaVersion": "3.2.1",
+  "schemaVersion": "3.4.0",
   "uuid": "b1d4c6de-1295-4935-afe6-26b47c5104f3",
   "name": {
     "en": "Pohoda Daily Digest",
@@ -22,6 +22,13 @@
   "repository": "https://github.com/VitexSoftware/Pohoda-Digest",
   "image": "",
   "executable": "/usr/bin/pohoda-daydigest",
+  "events": {
+    "emits": {
+      "digest.generated": {
+        "description": "A periodic digest report was generated"
+      }
+    }
+  },
   "environment": {
     "POHODA_URL": {
       "type": "url",
