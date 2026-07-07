@@ -25,38 +25,14 @@ override_dh_auto_install:
 	mkdir -p debian/pohoda-digest/usr/share/pohoda-digest
 	cp -r src/* debian/pohoda-digest/usr/share/pohoda-digest/
 	cp composer.json debian/pohoda-digest/usr/share/pohoda-digest/
-	
-	# Install bin directory with CLI tools
-	mkdir -p debian/pohoda-digest/usr/share/pohoda-digest/bin
-	cp bin/pohoda-digest.php debian/pohoda-digest/usr/share/pohoda-digest/bin/
-	chmod +x debian/pohoda-digest/usr/share/pohoda-digest/bin/pohoda-digest.php
-	
+
 	# Install Debian autoloader
 	install -D -m 0644 debian/autoload.php debian/pohoda-digest/usr/share/php/pohoda-digest/autoload.php
-	
-	# Fix entry point to use Debian autoloader
-	sed -i "s|require_once dirname(__DIR__) . '/vendor/autoload.php';|require_once '/usr/share/php/pohoda-digest/autoload.php';|" \
-		debian/pohoda-digest/usr/share/pohoda-digest/bin/pohoda-digest.php
-	
-	# Install CLI tools to /usr/bin
-	mkdir -p debian/pohoda-digest/usr/bin
-	cp bin/pohoda-digest debian/pohoda-digest/usr/bin/
-	cp bin/pohoda-alltimedigest debian/pohoda-digest/usr/bin/
-	cp bin/pohoda-daydigest debian/pohoda-digest/usr/bin/
-	cp bin/pohoda-monthdigest debian/pohoda-digest/usr/bin/
-	cp bin/pohoda-weekdigest debian/pohoda-digest/usr/bin/
-	cp bin/pohoda-yeardigest debian/pohoda-digest/usr/bin/
-	chmod +x debian/pohoda-digest/usr/bin/pohoda-*
-	
+
 	# Install configuration
 	mkdir -p debian/pohoda-digest/etc/pohoda-digest
 	cp -r config/* debian/pohoda-digest/etc/pohoda-digest/ || true
-	
-	# Install cron configuration
-	mkdir -p debian/pohoda-digest/etc/cron.d
-	echo "# Pohoda-Digest daily report" > debian/pohoda-digest/etc/cron.d/pohoda-digest
-	echo "0 6 * * * root /usr/bin/pohoda-daydigest --quiet" >> debian/pohoda-digest/etc/cron.d/pohoda-digest
-	
+
 	# Install MultiFlexi configurations
 	mkdir -p debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi
 	cp multiflexi/*.multiflexi.app.json debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/
@@ -66,6 +42,20 @@ override_dh_auto_install:
 	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/monthly_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/monthly_digest.multiflexi.app.json
 	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/yearly_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/yearly_digest.multiflexi.app.json
 	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p'| sed 's/~.*//'`'"' multiflexi/alltime_digest.multiflexi.app.json |sponge debian/multiflexi-pohoda-digest/usr/lib/pohoda-digest/multiflexi/alltime_digest.multiflexi.app.json
+
+override_dh_install:
+	dh_install
+	# bin/* is installed flat into /usr/bin (no sibling vendor/ dir there),
+	# so every entry point's require to vendor/autoload.php must be
+	# rewritten to the packaged Debian autoloader.
+	for f in debian/pohoda-digest/usr/bin/init.php \
+		debian/pohoda-digest/usr/bin/pohoda-digest.php \
+		debian/pohoda-digest/usr/bin/pohoda-digest; do \
+		sed -i \
+			-e "s|require_once dirname(__DIR__) \. '/vendor/autoload\.php';|require_once '/usr/share/php/pohoda-digest/autoload.php';|" \
+			-e "s|require_once __DIR__ \. '/\.\./vendor/autoload\.php';|require_once '/usr/share/php/pohoda-digest/autoload.php';|" \
+			"$$f"; \
+	done
 
 override_dh_auto_test:
 	# Skip tests for now - can be enabled when test suite is expanded

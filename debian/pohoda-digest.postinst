@@ -23,11 +23,6 @@ case "$1" in
             chmod -R 644 /etc/pohoda-digest
         fi
         
-        # Enable cron job
-        if [ -f /etc/cron.d/pohoda-digest ]; then
-            chmod 644 /etc/cron.d/pohoda-digest
-        fi
-        
         echo "Pohoda-Digest installed successfully!"
         echo "Configure your Pohoda connection in /etc/pohoda-digest/"
         echo "Run 'pohoda-digest --help' for usage information"
