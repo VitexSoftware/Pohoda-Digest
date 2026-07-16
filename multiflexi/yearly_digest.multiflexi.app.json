@@ -71,7 +71,7 @@
       "category": "API"
     },
     "THEME": {
-      "type": "select",
+      "type": "set",
       "description": {
         "en": "Report Theme",
         "cs": "Téma reportu"
