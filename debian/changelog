@@ -1,3 +1,10 @@
+pohoda-digest (1.0.0.35~trixie) trixie; urgency=medium
+
+  * Fix static autoloader: add Symfony Mailer/Mime requires so
+    DIGEST_MAILTO/MAIL_DSN email delivery works.
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Thu, 27 Aug 2026 14:24:42 +0200
+
 pohoda-digest (1.0.0) unstable; urgency=medium
 
   * Initial release
