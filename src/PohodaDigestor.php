@@ -124,6 +124,7 @@ class PohodaDigestor
     public function generate(\DatePeriod $period, ?string $format = null): string
     {
         $format ??= \Ease\Shared::cfg('OUTPUT_FORMAT', 'html');
+        $this->renderer->setItemLimit((int) \Ease\Shared::cfg('DIGEST_ITEMS_LIMIT', 0));
 
         if ($format === 'html' || $format === 'pdf') {
             $theme = \Ease\Shared::cfg('THEME', 'bootstrap');

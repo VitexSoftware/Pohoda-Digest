@@ -67,7 +67,11 @@ DIGEST_MAILTO="info@yourdomain.net"
 DIGEST_FROM="noreply@yourdomain.net"
 OUTPUT_FORMAT="html"
 DIGEST_SAVETO="/var/tmp/"
+DIGEST_ITEMS_LIMIT=0
 ```
+
+`DIGEST_ITEMS_LIMIT` sets the default maximum number of items listed in each section
+(`0` = unlimited). Only the listing is shortened — totals and charts still use all data.
 
 ## Programmatic usage
 
@@ -143,6 +147,7 @@ Supported environment variables per app:
 | `DIGEST_MAILTO` | Send digest to this address |
 | `OUTPUT_FORMAT` | `html`, `md`, or `pdf` |
 | `DIGEST_SAVETO` | Save output file to this path |
+| `DIGEST_ITEMS_LIMIT` | Default max. items listed per section (`0` = unlimited) |
 
 ## See also
 
