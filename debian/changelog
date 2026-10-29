@@ -1,3 +1,14 @@
+pohoda-digest (1.1.0) unstable; urgency=medium
+
+  * Digest item limit: new DIGEST_ITEMS_LIMIT setting (default maximum
+    number of items listed in each section, 0 = unlimited)
+  * Czech localization: new DIGEST_LOCALE setting, Czech digest subjects
+    and translated sections
+  * Fix structured (array) values returned by Pohoda mServer being
+    converted to strings
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Thu, 29 Oct 2026 14:54:30 +0100
+
 pohoda-digest (1.0.0.35~trixie) trixie; urgency=medium
 
   * Fix static autoloader: add Symfony Mailer/Mime requires so
