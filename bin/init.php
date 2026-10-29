@@ -26,4 +26,4 @@ if (file_exists($conffile)) {
     $shared->loadConfig($conffile, true);
 }
 
-\Ease\Locale::singleton(null, dirname(__DIR__) . '/i18n', 'pohoda-digest');
+\Ease\Locale::singleton(\Ease\Shared::cfg('DIGEST_LOCALE') ?: null, dirname(__DIR__) . '/i18n', 'pohoda-digest');

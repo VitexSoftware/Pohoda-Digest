@@ -1,0 +1,32 @@
+# Czech translation of pohoda-digest.
+# Copyright (C) VitexSoftware
+msgid ""
+msgstr ""
+"Project-Id-Version: pohoda-digest\n"
+"Language: cs_CZ\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+
+msgid "Pohoda 🌅 Daily digest %s"
+msgstr "Pohoda 🌅 Denní přehled %s"
+
+msgid "Pohoda 🌌 Alltime digest"
+msgstr "Pohoda 🌌 Přehled za celou dobu"
+
+msgid "Pohoda 🌜 Monthly digest"
+msgstr "Pohoda 🌜 Měsíční přehled"
+
+msgid "Pohoda 📆 Weekly digest"
+msgstr "Pohoda 📆 Týdenní přehled"
+
+msgid "Pohoda 🎆 Yearly digest"
+msgstr "Pohoda 🎆 Roční přehled"
+
+msgid "Saved to %s"
+msgstr "Uloženo do %s"
+
+msgid "Email sending failed: %s"
+msgstr "Odeslání e-mailu selhalo: %s"
+

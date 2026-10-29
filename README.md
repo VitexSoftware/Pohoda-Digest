@@ -68,7 +68,10 @@ DIGEST_FROM="noreply@yourdomain.net"
 OUTPUT_FORMAT="html"
 DIGEST_SAVETO="/var/tmp/"
 DIGEST_ITEMS_LIMIT=0
+DIGEST_LOCALE="cs_CZ.UTF-8"
 ```
+
+`DIGEST_LOCALE` selects the language of the digest (system locale, must be installed on the server: `locale -a`).
 
 `DIGEST_ITEMS_LIMIT` sets the default maximum number of items listed in each section
 (`0` = unlimited). Only the listing is shortened — totals and charts still use all data.
@@ -147,6 +150,7 @@ Supported environment variables per app:
 | `DIGEST_MAILTO` | Send digest to this address |
 | `OUTPUT_FORMAT` | `html`, `md`, or `pdf` |
 | `DIGEST_SAVETO` | Save output file to this path |
+| `DIGEST_LOCALE` | Digest language, e.g. `cs_CZ.UTF-8` or `en_US.UTF-8` |
 | `DIGEST_ITEMS_LIMIT` | Default max. items listed per section (`0` = unlimited) |
 
 ## See also

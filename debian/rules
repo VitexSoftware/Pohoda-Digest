@@ -47,6 +47,12 @@ override_dh_auto_install:
 
 override_dh_install:
 	dh_install
+	# Compile and install gettext catalogs
+	for po in i18n/*/LC_MESSAGES/*.po; do \
+	  lang=$$(basename $$(dirname $$(dirname $$po))); \
+	  install -d debian/pohoda-digest/usr/share/locale/$$lang/LC_MESSAGES; \
+	  msgfmt -o debian/pohoda-digest/usr/share/locale/$$lang/LC_MESSAGES/$$(basename $$po .po).mo $$po; \
+	done
 	# bin/* is installed flat into /usr/bin (no sibling vendor/ dir there),
 	# so every entry point's require to vendor/autoload.php must be
 	# rewritten to the packaged Debian autoloader.
@@ -56,6 +62,7 @@ override_dh_install:
 		sed -i \
 			-e "s|require_once dirname(__DIR__) \. '/vendor/autoload\.php';|require_once '/usr/share/php/pohoda-digest/autoload.php';|" \
 			-e "s|require_once __DIR__ \. '/\.\./vendor/autoload\.php';|require_once '/usr/share/php/pohoda-digest/autoload.php';|" \
+			-e "s|dirname(__DIR__) \. '/i18n'|'/usr/share/locale'|" \
 			"$$f"; \
 	done
 
