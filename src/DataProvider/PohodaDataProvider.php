@@ -418,7 +418,7 @@ class PohodaDataProvider implements DataProviderInterface
             DataProviderInterface::FIELD_CODE => (string) ($inv['symVar'] ?? $inv['number']['numberRequested'] ?? $inv['numberRequested'] ?? ''),
             DataProviderInterface::FIELD_DATE => (string) ($inv['date'] ?? $inv['dateAccounting'] ?? ''),
             DataProviderInterface::FIELD_DUE_DATE => (string) ($inv['dateDue'] ?? $inv['dueDate'] ?? ''),
-            DataProviderInterface::FIELD_COMPANY => (string) ($address['company'] ?? $address['name'] ?? ''),
+            DataProviderInterface::FIELD_COMPANY => self::scalarize($address['company'] ?? $address['name'] ?? ''),
             DataProviderInterface::FIELD_TOTAL_AMOUNT => $totalHome,
             DataProviderInterface::FIELD_TOTAL_AMOUNT_FOREIGN => $totalForeign,
             DataProviderInterface::FIELD_REMAINING_AMOUNT => $remaining,
@@ -456,7 +456,7 @@ class PohodaDataProvider implements DataProviderInterface
         return [
             DataProviderInterface::FIELD_CODE => (string) ($tx['number'] ?? ''),
             DataProviderInterface::FIELD_DATE => (string) ($tx['date'] ?? $tx['dateStatement'] ?? ''),
-            DataProviderInterface::FIELD_COMPANY => (string) ($address['name'] ?? ''),
+            DataProviderInterface::FIELD_COMPANY => self::scalarize($address['name'] ?? ''),
             DataProviderInterface::FIELD_BANK_ACCOUNT => (string) ($tx['account'] ?? ''),
             DataProviderInterface::FIELD_TOTAL_AMOUNT => abs($amount),
             DataProviderInterface::FIELD_TOTAL_AMOUNT_FOREIGN => abs(self::parseAmount($tx['foreignCurrency'] ?? [])),
@@ -484,11 +484,11 @@ class PohodaDataProvider implements DataProviderInterface
 
         return [
             DataProviderInterface::FIELD_CODE => (string) ($contact['id'] ?? ''),
-            DataProviderInterface::FIELD_NAME => (string) ($address['name'] ?? ''),
+            DataProviderInterface::FIELD_NAME => self::scalarize($address['name'] ?? ''),
             DataProviderInterface::FIELD_EMAIL => (string) ($address['email'] ?? ''),
             DataProviderInterface::FIELD_PHONE => (string) ($address['phone'] ?? $address['mobilPhone'] ?? ''),
-            DataProviderInterface::FIELD_STREET => (string) ($address['street'] ?? ''),
-            DataProviderInterface::FIELD_CITY => (string) ($address['city'] ?? ''),
+            DataProviderInterface::FIELD_STREET => self::scalarize($address['street'] ?? ''),
+            DataProviderInterface::FIELD_CITY => self::scalarize($address['city'] ?? ''),
         ];
     }
 
@@ -509,6 +509,28 @@ class PohodaDataProvider implements DataProviderInterface
             DataProviderInterface::FIELD_BUY_PRICE => (float) ($header['purchasingPrice'] ?? 0),
             DataProviderInterface::FIELD_SELL_PRICE => (float) ($header['sellingPrice'] ?? 0),
         ];
+    }
+
+    /**
+     * Coerce a raw Pohoda field value to a plain string.
+     *
+     * Pohoda mServer sometimes returns structured (array) values for fields
+     * that are normally scalar (e.g. address name/street/city built from
+     * multiple sub-elements); a plain (string) cast on those triggers an
+     * "Array to string conversion" warning and silently drops the data.
+     *
+     * @param mixed $value Raw value
+     */
+    private static function scalarize(mixed $value): string
+    {
+        if (!\is_array($value)) {
+            return (string) ($value ?? '');
+        }
+
+        return implode(', ', array_map(
+            static fn ($item) => self::scalarize($item),
+            array_filter($value, static fn ($item) => $item !== null && $item !== ''),
+        ));
     }
 
     /**
