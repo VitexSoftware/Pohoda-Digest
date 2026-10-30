@@ -1,3 +1,23 @@
+pohoda-digest (1.2.1) unstable; urgency=medium
+
+  * MultiFlexi app definitions: offer all 10 DigestRenderer themes in
+    THEME options
+  * Depends: digest-modules >= 1.2.1, digest-renderer >= 1.3.0
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Fri, 30 Oct 2026 16:45:10 +0100
+
+pohoda-digest (1.2.0) unstable; urgency=medium
+
+  * Customers without email/phone: only customers and supplier/customers are listed
+    (Pohoda keys ODB / DOD+ODB; element names configurable by POHODA_KEY_CUSTOMER and
+    POHODA_KEY_SUPPLIER)
+  * Fix: e-mail, phone and company name of address book contacts are now read from the
+    right place, so contacts that have an e-mail are no longer reported as missing it
+  * MultiFlexi: the generated HTML report is registered as a job artifact (RESULT_FILE)
+  * MultiFlexi: the applications declare MServer and Mail credential requirements
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Fri, 30 Oct 2026 14:12:41 +0100
+
 pohoda-digest (1.1.0) unstable; urgency=medium
 
   * Digest item limit: new DIGEST_ITEMS_LIMIT setting (default maximum

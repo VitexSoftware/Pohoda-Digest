@@ -10,8 +10,8 @@ Package: pohoda-digest
 Architecture: all
 Depends: ${misc:Depends},
          php-cli,
-         php-vitexsoftware-digest-modules,
-         php-vitexsoftware-digest-renderer,
+         php-vitexsoftware-digest-modules (>= 1.2.1),
+         php-vitexsoftware-digest-renderer (>= 1.3.0),
          php-vitexsoftware-pohoda-connector,
          php-symfony-mailer,
          composer,
