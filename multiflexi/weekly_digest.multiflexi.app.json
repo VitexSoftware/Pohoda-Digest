@@ -19,7 +19,8 @@
     "Accounting"
   ],
   "requirements": [
-    "MServer"
+    "MServer",
+    "Mail"
   ],
   "homepage": "https://multiflexi.eu/doc/",
   "repository": "https://github.com/VitexSoftware/Pohoda-Digest",
