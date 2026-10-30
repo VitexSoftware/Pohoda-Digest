@@ -18,6 +18,9 @@
     "All-time",
     "Accounting"
   ],
+  "requirements": [
+    "MServer"
+  ],
   "homepage": "https://multiflexi.eu/doc/",
   "repository": "https://github.com/VitexSoftware/Pohoda-Digest",
   "image": "",
