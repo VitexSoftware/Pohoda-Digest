@@ -504,9 +504,10 @@ class PohodaDataProvider implements DataProviderInterface
 
         return [
             DataProviderInterface::FIELD_CODE => (string) ($contact['id'] ?? ''),
-            DataProviderInterface::FIELD_NAME => self::scalarize($address['name'] ?? ''),
-            DataProviderInterface::FIELD_EMAIL => (string) ($address['email'] ?? ''),
-            DataProviderInterface::FIELD_PHONE => (string) ($address['phone'] ?? $address['mobilPhone'] ?? ''),
+            DataProviderInterface::FIELD_NAME => self::scalarize($address['company'] ?? '') ?: self::scalarize($address['name'] ?? ''),
+            // Pohoda keeps contact details on the address book record itself, not inside identity.address
+            DataProviderInterface::FIELD_EMAIL => self::scalarize($contact['email'] ?? $address['email'] ?? ''),
+            DataProviderInterface::FIELD_PHONE => self::scalarize($contact['phone'] ?? '') ?: self::scalarize($contact['mobil'] ?? $address['phone'] ?? $address['mobilPhone'] ?? ''),
             DataProviderInterface::FIELD_STREET => self::scalarize($address['street'] ?? ''),
             DataProviderInterface::FIELD_CITY => self::scalarize($address['city'] ?? ''),
             DataProviderInterface::FIELD_RELATIONSHIP => self::contactRelationship($contact),
