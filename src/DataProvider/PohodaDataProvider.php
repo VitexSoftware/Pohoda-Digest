@@ -242,6 +242,26 @@ class PohodaDataProvider implements DataProviderInterface
                 case DataProviderInterface::FILTER_WITH_ITEMS:
                     // Pohoda always includes invoice items — no server-side flag needed
                     break;
+                case DataProviderInterface::FILTER_RELATIONSHIP:
+                    $want = (string) $value;
+                    $postFilters[] = static function (array $r) use ($want): bool {
+                        $rel = $r[DataProviderInterface::FIELD_RELATIONSHIP] ?? '';
+
+                        return match ($want) {
+                            // customer or supplier+customer; pure suppliers and unmarked contacts are left out
+                            DataProviderInterface::RELATIONSHIP_CUSTOMER => \in_array($rel, [
+                                DataProviderInterface::RELATIONSHIP_CUSTOMER,
+                                DataProviderInterface::RELATIONSHIP_CUSTOMER_SUPPLIER,
+                            ], true),
+                            DataProviderInterface::RELATIONSHIP_SUPPLIER => \in_array($rel, [
+                                DataProviderInterface::RELATIONSHIP_SUPPLIER,
+                                DataProviderInterface::RELATIONSHIP_CUSTOMER_SUPPLIER,
+                            ], true),
+                            default => $rel === $want,
+                        };
+                    };
+
+                    break;
                 case DataProviderInterface::FILTER_LIMIT:
                     // Handled after post-filtering in getData()
                     break;
@@ -489,7 +509,37 @@ class PohodaDataProvider implements DataProviderInterface
             DataProviderInterface::FIELD_PHONE => (string) ($address['phone'] ?? $address['mobilPhone'] ?? ''),
             DataProviderInterface::FIELD_STREET => self::scalarize($address['street'] ?? ''),
             DataProviderInterface::FIELD_CITY => self::scalarize($address['city'] ?? ''),
+            DataProviderInterface::FIELD_RELATIONSHIP => self::contactRelationship($contact),
         ];
+    }
+
+    /**
+     * Derive customer/supplier relationship from the Pohoda address book keys.
+     *
+     * Pohoda marks contacts by keys (DOD = supplier, ODB = customer, DOD+ODB = both)
+     * stored in the p1..p6 elements. Element names are configurable
+     * (POHODA_KEY_SUPPLIER, POHODA_KEY_CUSTOMER) because key order is user-defined.
+     *
+     * @param array<string, mixed> $contact Raw Pohoda address book record
+     */
+    private static function contactRelationship(array $contact): string
+    {
+        $header = $contact['addressBookHeader'] ?? $contact;
+        $isSet = static function (string $element) use ($header, $contact): bool {
+            $value = $header[$element] ?? $contact[$element] ?? false;
+
+            return \in_array(strtolower(trim((string) (\is_scalar($value) ? $value : ''))), ['1', 'true'], true);
+        };
+
+        $supplier = $isSet((string) Shared::cfg('POHODA_KEY_SUPPLIER', 'p1'));
+        $customer = $isSet((string) Shared::cfg('POHODA_KEY_CUSTOMER', 'p2'));
+
+        return match (true) {
+            $supplier && $customer => DataProviderInterface::RELATIONSHIP_CUSTOMER_SUPPLIER,
+            $customer => DataProviderInterface::RELATIONSHIP_CUSTOMER,
+            $supplier => DataProviderInterface::RELATIONSHIP_SUPPLIER,
+            default => '',
+        };
     }
 
     /**
