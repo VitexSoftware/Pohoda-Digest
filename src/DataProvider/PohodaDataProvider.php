@@ -452,6 +452,7 @@ class PohodaDataProvider implements DataProviderInterface
             DataProviderInterface::FIELD_MAIL_STATUS => DataProviderInterface::MAIL_STATUS_EMPTY,
             DataProviderInterface::FIELD_DESCRIPTION => (string) ($inv['text'] ?? $inv['note'] ?? ''),
             DataProviderInterface::FIELD_CONTACT_EMAIL => (string) ($address['email'] ?? ''),
+            DataProviderInterface::FIELD_CONTACT_PHONE => self::scalarize($address['phone'] ?? '') ?: self::scalarize($address['mobilPhone'] ?? ''),
             DataProviderInterface::FIELD_DEDUCTION_STATUS => DataProviderInterface::DEDUCTION_STATUS_NONE,
             DataProviderInterface::FIELD_FIRST_REMINDER_DATE => '',
             DataProviderInterface::FIELD_SECOND_REMINDER_DATE => '',
